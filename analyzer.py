@@ -1,17 +1,17 @@
 # Modulo: Analyzer.py
 # Contiene toda la logica de analisis de logs
 
-def obtener_severidad(log_a_procesar: dict) -> dict:
+def obtener_severidad(log_a_procesar: LogEvent) -> str:
 
     """
-    Analiza un unico log  en formato diccionario y DEVUELVE su severidad
+    Analiza un unico objeto LogEvent y DEVUELVE su severidad
     """
-    # Extraemos el valor de la clave 'nivel' del diccionario
-    nivel = log_a_procesar['nivel']
+    # En lugar de claves de diccionario ['nivel'], usamos atributos de objeto '.nivel'
+    nivel_log = log_a_procesar.nivel
 
-    if nivel == "ERROR":
+    if nivel_log == "ERROR":
         return "ALERTA"
-    elif nivel == "WARN":
+    elif nivel_log == "WARN":
         return "AVISO"
     else:
         return "INFORMACION"

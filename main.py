@@ -1,17 +1,16 @@
-# Módulo 2.5: Diccionarios (dict)
 # main.py - nuestro script principal
 
 # --- IMPORTACIONES ---
-# Importamos la funcion obtener_severidad del modulo analyzer.py
 from analyzer import obtener_severidad
+from models import LogEvent # Importamos la clase LogEvent
 
-print("--- Iniciando Analizador SIEM v0.6 (Con diccionarios) ---")
+print("--- Iniciando Analizador SIEM v0.7 (Orientado a objetos) ---")
 
 
 # --- DEFINICION DE DATOS ---
 # Lista de diccionarios
 
-log_batch = [
+log_data_cruda = [
     {
         "timestamp": "2025-11-04T20:01:00",
         "nivel": "INFO",
@@ -50,20 +49,37 @@ log_batch = [
     }
 ]
 
-# --- EJECUCION PRINCIPAL ---
-# (EL 'CEREBRO' DEL PROGRAMA)
+# --- TRANSFORMACION DE DATOS (NUEVO PASO) ----
+print("\n--- TRANSFORMANDO DATOS CRUDOS A OBJETOS LOG ---")
+lista_de_objetos_log = []
+for log_dict in log_data_cruda:
+    # Se crea el objeto
+    # Llamamos a la clase como si fuera una funcion
+    # Esto ejecuta automaticamente el metodo __init__
 
+    nuevo_log_obj = LogEvent(
+        timestamp=log_dict['timestamp'],
+        nivel=log_dict['nivel'],
+        mensaje=log_dict['mensaje'],
+        ip=log_dict['ip']
+    )
+
+    lista_de_objetos_log.append(nuevo_log_obj)
+
+# --- EJECUCION PRINCIPAL ---
 print("\n--- COMENZANDO ANALISIS EN LOTES ---")
 
-for log in log_batch:
-    # 'log' ya no es string, es un diccionario
-    # tenemos que pasarle el diccionario completo a nuestra funcion obtener_severidad
+# iteramos sobre nuestra lista de objetos
+
+for log in lista_de_objetos_log:
     severidad = obtener_severidad(log)
 
-    # Usamos e acceso por clave para imprimir de forma ordenada
-    print(f"Log: {log['timestamp']} | IP: {log['ip']} | Nivel: {log['nivel']}")
+    print(f"Log: {log.timestamp} | IP: {log.ip} | Nivel: {log.nivel}")
 
     if severidad == "ALERTA":
-        print(f"    [ALERTA] ACCION REQUERIDA: Mensaje: {log['mensaje']}")
+        print(f"    [ALERTA] ACCION REQUERIDA: Mensaje: {log.mensaje}")
+
+    if severidad == "AVISO":
+        print(f"    [AVISO] ACCION REQUERIDA: Mensaje: {log.mensaje}")
 
 print("--- ANALISIS DE LOGS FINALIZADO ---")
