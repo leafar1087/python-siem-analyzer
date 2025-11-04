@@ -1,56 +1,48 @@
-# MODULO 2.1: FUNDAMENTOS DE PYTHON
-# PROYECTO: ANALIZADOR SIEM
-# AUTOR: RAFAEL ANTONIO PEREZ LLORCA
-# FECHA: 04/11/2025
+# Módulo 2.5: Tipos de Datos avanzados (listas, tuplas, diccionarios)
+# Modulo 2.4: Control de flujo (bucles)
 
-# 1.VARIABLES DE TIPO STRING(str)
+print(f"--- Iniciando Analizador SIEM v0.2 (Procesamiento por Lotes) ---")
 
-ip_origen = "192.168.1.1"
-usuario = "raperez"
-evento_log = "Fallo de autenticacion"
+# 1. Una lista de logs (tipo 'list')
+# en lugar de un solo string, ahora tenemos una lista de strings
 
-# 2.VARIABLES DE TIPO INTEGER(int)
+log_batch = [
+    "INFO: 2025-11-04T20:01:00 - 192.168.1.1 - Conexión exitosa",
+    "ERROR: 2025-11-04T20:02:15 - 10.0.0.5 - Fallo de autenticación",
+    "INFO: 2025-11-04T20:02:30 - 192.168.1.1 - Desconexión",
+    "WARN: 2025-11-04T20:03:00 - 10.0.0.5 - Intento de acceso a puerto 8080",
+    "ERROR: 2025-11-04T20:04:10 - 10.0.0.5 - Fallo de autenticación",
+    "ERROR: 2025-11-04T20:05:00 - 10.0.0.5 - Fallo de autenticación"
+]
 
-intentos_fallidos = 1
-puerto_destino = 8080
+# 2. Accediendo a elementos de la lista (por indice)
+# Python empieza a contar desde 0, por lo que el primer elemento es el 0, el segundo es el 1, etc.
 
-# 3.VARIABLES DE TIPO BOOLEANO(bool)
+print(f"Primer log: {log_batch[0]}")
+print(f"Segundo log: {log_batch[1]}")
+print(f"Ultimo log: {log_batch[-1]}")
 
-es_critico = True
-sesion_iniciada = False
+# Tambien podemos saber cuantos logs tenemos en la lista
+print(f"Total de logs a analizar: {len(log_batch)}")
 
-# 4. MODULO 2.4: CONTROL DE FLUJO (DECISIONES)
+# 3. Iterando sobre la lista (usando bucles)
+# Un bucle es un bloque de codigo que se ejecuta repetidamente hasta que se cumple una condicion
+# Usamos la palabra clave 'for' para iterar sobre la lista
+# La variable 'log' va tomando sucesivamente cada elemento de la lista
 
-print("--- Inciando Analizador SIEM ---")
+print("--- Analizando logs ---")
+for log in log_batch:
+    print(f"Procesando log: {log}")
 
-# Decisión 1: Es un evento critico?
-# Comparamos un booleano directamente
+    # Reutilizamos nuestra logica if/elif/else de la leccion anterior
+    # Pero ahora lo aplicamos a la variable 'log' que contiene cada log de la lista
 
-if es_critico == False:
-# if es_critico:
-    print(f"[ALERTA] Evento critico detectado {evento_log}")
+    if "ERROR" in log or "Fallo" in log:
+        print(f"    [ALERTA] Se ha detectado un evento critico en seguridad")
+    elif "WARN" in log or "Advertencia" in log:
+        print(f"    [AVISO] Evento de advertencia detectado")
+    
+    # No necesitamos else paa los INFO, ya que no son eventos críticos
 
-    # Decision 2: ya ques es crítico, veamos que tan grave es
-    # Usamos un operador de comparación numerico para ver si el numero de intentos es mayor a 3
-    if intentos_fallidos >= 3:
-        print(f"[Prioridad ALTA] Muchos intentos fallidos ({intentos_fallidos}) desde {ip_origen}")
-    else:
-        print(f"[Prioridad MEDIA] {intentos_fallidos} intento(s) fallido(s) desde {ip_origen}")
-
-# Decision 3: ¿Qué hacemos si el evento no es critico?
-else:
-    print(f"[INFORMACION] Evento no critico: {evento_log}")
-
-# Decision 4: Usando 'elif' para manejar otros casos (contraccion de 'else if')
-
-print("--- Análisis de puertos ---")
-
-if puerto_destino == 80:
-    print(f"Protocolo: HTTP (no seguro)")
-elif puerto_destino == 443:
-    print(f"Protocolo: HTTPS (seguro)")
-elif puerto_destino == 22:
-    print(f"Protocolo: SSH (Acceso remoto)")
-else:
-    print(f"Protocolo: Desconocido ({puerto_destino})")
+print("--- Fin del analisis de logs ---")
 
