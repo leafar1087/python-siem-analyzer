@@ -1,10 +1,10 @@
 # main.py - nuestro script principal
 
 # --- IMPORTACIONES ---
-from analyzer import obtener_severidad
+
 from models import LogEvent # Importamos la clase LogEvent
 
-print("--- Iniciando Analizador SIEM v0.7 (Orientado a objetos) ---")
+print("--- Iniciando Analizador SIEM v0.8 (POO PURA) ---")
 
 
 # --- DEFINICION DE DATOS ---
@@ -72,7 +72,7 @@ print("\n--- COMENZANDO ANALISIS EN LOTES ---")
 # iteramos sobre nuestra lista de objetos
 
 for log in lista_de_objetos_log:
-    severidad = obtener_severidad(log)
+    severidad = log.obtener_severidad() # Llamamos al metodo del objeto
 
     print(f"Log: {log.timestamp} | IP: {log.ip} | Nivel: {log.nivel}")
 
