@@ -1,55 +1,46 @@
 # main.py - nuestro script principal
 
 # --- IMPORTACIONES ---
-
+import json # Importamos el modulo json para leer el archivo logs.json
 from models import LogEvent, ErrorLogEvent, WarnLogEvent, InfoLogEvent # Importamos las clases LogEvent, ErrorLogEvent, WarnLogEvent y InfoLogEvent
+# Modulo 4.5: gestion de excepciones
+import sys
 
-print("--- Iniciando Analizador SIEM v0.9 (POO PURA + HERENCIA) ---")
+print("--- Iniciando Analizador SIEM v1.0 (JSON y manejo de errores) ---")
 
 
-# --- DEFINICION DE DATOS ---
-# Lista de diccionarios
+# ---  DEFINICION DE DATOS ---
+# ya no escribimos los datos, los leemos
+# usamos un bloque try-except para manejar errores
 
-log_data_cruda = [
-    {
-        "timestamp": "2025-11-04T20:01:00",
-        "nivel": "INFO",
-        "mensaje": "Conexión exitosa",
-        "ip": "192.168.1.1"
-    },
-    {
-        "timestamp": "2025-11-04T20:02:15",
-        "nivel": "ERROR",
-        "mensaje": "Fallo de autenticación",
-        "ip": "10.0.0.5"
-    },
-    {
-        "timestamp": "2025-11-04T20:02:30",
-        "nivel": "INFO",
-        "mensaje": "Desconexión",
-        "ip": "192.168.1.1"
-    },
-    {
-        "timestamp": "2025-11-04T20:03:00",
-        "nivel": "WARN",
-        "mensaje": "Intento de acceso a puerto 8080",
-        "ip": "10.0.0.5"
-    },
-    {
-        "timestamp": "2025-11-04T20:04:10",
-        "nivel": "ERROR",
-        "mensaje": "Fallo de autenticación",
-        "ip": "10.0.0.5"
-    },
-    {
-        "timestamp": "2025-11-04T20:05:00",
-        "nivel": "ERROR",
-        "mensaje": "Fallo de autenticación",
-        "ip": "10.0.0.5"
-    }
-]
+log_data_cruda = [] # inicializamos la lista vacia
+nombre_archivo = "logs.json"
 
-# --- TRANSFORMACION DE DATOS (NUEVO PASO) ----
+try:
+    # 'with open(...)': Es la forma correcta de abrir archivos en Python
+    # 'r' significa 'read' (leer)
+    with open(nombre_archivo, "r") as f:
+        # json.load(f): Lee el archivo 'f' y lo convierte
+        # en una esrtuctura dedatos de Python (en este caso, una lista de dicts)
+        log_data_cruda = json.load(f)
+    print(f"Cargados {len(log_data_cruda)} logs correctamente desde {nombre_archivo}")
+
+except FileNotFoundError:
+    print(f"[ERROR CRITICO]: El archivo {nombre_archivo} no existe")
+    print("Por favor, asegurese de que el archivo existe y que el nombre es correcto")
+    print("Programa terminado.")
+    sys.exit(1) # sale del programa con un codigo de error 1 (1 es el codigo de error para errores criticos)
+
+except json.JSONDecodeError:
+    print(f"[ERROR CRITICO]: El archivo {nombre_archivo} no es un archivo JSON valido")
+    print("Por favor, asegurese de que el archivo es un archivo JSON valido")
+    print("Programa terminado.")
+    sys.exit(1) # sale del programa con un codigo de error 1 (1 es el codigo de error para errores criticos)
+
+
+# --- TRANSFORMACION DE DATOS ---
+# 
+
 print("\n--- TRANSFORMANDO DATOS CRUDOS A OBJETOS LOG ---")
 lista_de_objetos_log = []
 for log_dict in log_data_cruda:
@@ -85,12 +76,12 @@ for log in lista_de_objetos_log:
     # heredó el metodo obtener_severidad() de LogEvent
     severidad = log.obtener_severidad() # Llamamos al metodo del objeto
 
-    print(f"Log: {log.timestamp} | IP: {log.ip} | Nivel: {log.nivel}")
+    print(f"Log: {log.timestamp} | IP: {log.ip} | Nivel: {severidad}")
 
-    if severidad == "ALERTA":
-        print(f"    [ALERTA] ACCION REQUERIDA: Mensaje: {log.mensaje}")
+    if "ALERTA" in severidad:
+        print(f"    ACCION REQUERIDA: Mensaje: {log.mensaje}")
 
-    if severidad == "AVISO":
-        print(f"    [AVISO] ACCION REQUERIDA: Mensaje: {log.mensaje}")
+    if "AVISO" in severidad:
+        print(f"    ACCION REQUERIDA: Mensaje: {log.mensaje}")
 
 print("--- ANALISIS DE LOGS FINALIZADO ---")

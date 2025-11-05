@@ -43,11 +43,17 @@ class LogEvent:
 # Estas clases heredan TODO de LogEvent
 
 class ErrorLogEvent(LogEvent):
-    # Esta clase ahora tiene __init__ y obtener_severidad()
-    # aunque no veamos el código aquí.
-    # 'pass' es una palabra clave de Python que significa:
-    # "No quiero añadir nada nuevo, esta clase está intencionalmente vacía".
-    pass
+    # --- Sobrescritura de Métodos (Polimorfismo) ---
+    # Este método "sobrescribe" al de la clase LogEvent.
+    # Cuando se llame a .obtener_severidad() en un objeto ErrorLogEvent,
+    # se ejecutará ESTA versión, no la del padre.
+    
+    def obtener_severidad(self) -> str:
+        """
+        Sobrescribe el método del padre oaa dar una severidad específica
+        """
+        # Ya no necesita lógica 'if', sabemos que esto es un ERROR
+        return "ALERTA CRITICA"
 
 class WarnLogEvent(LogEvent):
     # Esta clase tambien hereda de LogEvent
