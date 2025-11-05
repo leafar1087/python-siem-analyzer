@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard SIEM</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { 
+            color: #4CAF50; /* Verde ciberseguridad */
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #e0e0e0;
+        }
+        #stats-container, #log-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+        }
+        /* Estilos para las estadísticas */
+        #stats-content ul {
+            list-style-type: square;
+            padding-left: 20px;
+        }
+        #stats-content li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    
+    <h1>Dashboard del Analizador SIEM</h1>
+    
+    <div id="stats-container">
+        <h2>Estadísticas Clave</h2>
+        <div id="stats-content">
+            <p>Cargando estadísticas...</p>
+        </div>
+    </div>
+    
+    <div id="log-container">
+        <h2>Logs en Vivo</h2>
+        <table width="100%">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>IP de Origen</th>
+                    <th>Severidad</th>
+                    <th>Mensaje</th>
+                </tr>
+            </thead>
+            <tbody id="log-table-body">
+                <tr>
+                    <td colspan="4">Cargando datos desde la API...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Este script se ejecuta cuando el navegador termina de cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            // ¡Llamamos a las dos funciones!
+            cargarLogs();
+            cargarStats();
+        });
+
+        // --- FUNCIÓN PARA CARGAR LOS LOGS ---
+        function cargarLogs() {
+            const tableBody = document.getElementById('log-table-body');
+            
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    tableBody.innerHTML = ''; // Limpiamos el "Cargando..."
+                    data.forEach(log => {
+                        const row = document.createElement('tr');
+                        
+                        // Añadimos el estilo de color basado en la severidad
+                        if (log.severidad.includes('ALERTA')) {
+                            row.style.color = '#ff6b6b'; // Rojo para alertas
+                        } else if (log.severidad === 'AVISO') {
+                            row.style.color = '#ffb86c'; // Naranja para avisos
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${log.timestamp}</td>
+                            <td>${log.ip}</td>
+                            <td>${log.severidad}</td>
+                            <td>${log.mensaje}</td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al cargar los logs:', error);
+                    tableBody.innerHTML = '<tr><td colspan="4">Error al cargar datos de la API.</td></tr>';
+                });
+        }
+
+        // --- FUNCIÓN PARA CARGAR LAS ESTADÍSTICAS ---
+        // --- FUNCIÓN PARA CARGAR LAS ESTADÍSTICAS (VERSIÓN DEFENSIVA) ---
+        function cargarStats() {
+            const statsContent = document.getElementById('stats-content');
+            
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(stats => {
+                    // ----------------------------------------------------
+                    // ¡¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE!!
+                    // Antes de usar 'stats', comprobamos si es un JSON de error.
+                    // ----------------------------------------------------
+                    if (stats.error) {
+                        // Si es un JSON de error, lo mostramos
+                        console.error('Error recibido desde la API /api/stats:', stats.error);
+                        statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas: ${stats.error}. Revisa el terminal de Flask.</p>`;
+                        return; // Detenemos la función aquí
+                    }
+
+                    // Si llegamos aquí, 'stats' es el JSON de ÉXITO
+                    // Así que el resto del código ahora es seguro.
+                    const statsHtml = `
+                        <p><strong>Total de Logs Analizados:</strong> ${stats.total_logs}</p>
+                        
+                        <strong>Conteo por Nivel:</strong>
+                        <ul>
+                            ${Object.entries(stats.conteo_por_nivel).map(([nivel, conteo]) => 
+                                `<li>${nivel}: ${conteo}</li>`
+                            ).join('')}
+                        </ul>
+                        
+                        <strong>Top 5 IPs Activas:</strong>
+                        <ul>
+                            ${Object.entries(stats.top_5_ips).map(([ip, conteo]) => 
+                                `<li>${ip}: ${conteo} eventos</li>`
+                            ).join('')}
+                        </ul>
+                    `;
+                    
+                    statsContent.innerHTML = statsHtml;
+                })
+                .catch(error => {
+                    // Este 'catch' ahora solo se activará si el 'fetch' en sí falla (ej. sin conexión)
+                    console.error('Error de red al cargar las estadísticas:', error);
+                    statsContent.innerHTML = '<p style="color: #ff6b6b;">Error de red al cargar estadísticas.</p>';
+                });
+        }
+    </script>
+
+</body>
+</html>

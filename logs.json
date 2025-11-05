@@ -24,6 +24,18 @@
         "ip": "10.0.0.5"
     },
     {
+        "timestamp": "2025-11-04T20:03:10",
+        "nivel": "WARN",
+        "mensaje": "Intento de acceso a puerto 8080",
+        "ip": "10.0.0.5"
+    },
+    {
+        "timestamp": "2025-11-04T20:03:20",
+        "nivel": "WARN",
+        "mensaje": "Intento de acceso a puerto 8080",
+        "ip": "10.0.0.5"
+    },
+    {
         "timestamp": "2025-11-04T20:04:10",
         "nivel": "ERROR",
         "mensaje": "Fallo de autenticación",
@@ -34,5 +46,32 @@
         "nivel": "ERROR",
         "mensaje": "Fallo de autenticación",
         "ip": "10.0.0.5"
+    },
+    {
+        "timestamp": "2025-11-04T20:06:00",
+        "nivel": "INFO",
+        "mensaje": "Conexión exitosa",
+        "ip": "192.168.1.1"
+    },
+    {
+        "timestamp": "2025-11-04T20:07:00",
+        "nivel": "INFO",
+        "mensaje": "Conexión exitosa",
+        "ip": "192.168.1.1"
+    },
+    {
+        "timestamp": "2025-11-04T20:08:00",
+        "nivel": "INFO",
+        "mensaje": "Conexión exitosa",
+        "ip": "192.168.1.1"
+    },
+    {
+        "timestamp": "2025-11-04T20:09:00",
+        "nivel": "INFO",
+        "mensaje": "Conexión exitosa",
+        "ip": "192.168.1.1"
     }
+
+
+
 ]
