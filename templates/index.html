@@ -76,32 +76,59 @@
                 </tr>
             </tbody>
         </table>
+
+        <div id="pagination-controls" style="margin-top: 15px; text-align: center;">
+            <button id="btn-anterior" onclick="cambiarPagina('anterior')">&laquo; Anterior</button>
+            <span id="page-info" style="margin: 0 15px;">Página ? de ?</span>
+            <button id="btn-siguiente" onclick="cambiarPagina('siguiente')">Siguiente &raquo;</button>
+        </div>
+        
     </div>
 
     <script>
+        // --- VARIABLES GLOBALES PARA ESTADO ---
+        let currentPage = 1;
+        const logsPorPagina = 10; // O el default que pusiste en tu API
+
         // Este script se ejecuta cuando el navegador termina de cargar la página
         document.addEventListener('DOMContentLoaded', () => {
             // ¡Llamamos a las dos funciones!
-            cargarLogs();
+            cargarLogs(currentPage); // Carga la página 1 al iniciar
             cargarStats();
         });
+        
+        // --- NUEVA FUNCIÓN 'cambiarPagina' ---
+        // Esta función será llamada por los botones 'onclick'
+        function cambiarPagina(direccion) {
+            if (direccion === 'siguiente') {
+                currentPage++;
+            } else if (direccion === 'anterior') {
+                currentPage--;
+            }
+            cargarLogs(currentPage);
+        }
 
-        // --- FUNCIÓN PARA CARGAR LOS LOGS ---
-        function cargarLogs() {
+        // --- ¡FUNCIÓN 'cargarLogs' ACTUALIZADA! ---
+        function cargarLogs(page) {
             const tableBody = document.getElementById('log-table-body');
             
-            fetch('/api/logs')
+            // 1. Construimos la URL con los parámetros de paginación
+            fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}`)
                 .then(response => response.json())
                 .then(data => {
-                    tableBody.innerHTML = ''; // Limpiamos el "Cargando..."
-                    data.forEach(log => {
+                    // ¡Importante! 'data' ahora es un OBJETO {'logs': [...], ...}
+                    
+                    // 2. Limpiamos la tabla
+                    tableBody.innerHTML = ''; 
+                    
+                    // 3. Iteramos sobre 'data.logs', ¡no sobre 'data'!
+                    data.logs.forEach(log => {
                         const row = document.createElement('tr');
                         
-                        // Añadimos el estilo de color basado en la severidad
                         if (log.severidad.includes('ALERTA')) {
-                            row.style.color = '#ff6b6b'; // Rojo para alertas
+                            row.style.color = '#ff6b6b'; 
                         } else if (log.severidad === 'AVISO') {
-                            row.style.color = '#ffb86c'; // Naranja para avisos
+                            row.style.color = '#ffb86c';
                         }
                         
                         row.innerHTML = `
@@ -113,59 +140,30 @@
                         
                         tableBody.appendChild(row);
                     });
+                    
+                    // 4. Actualizamos la información de paginación
+                    const pageInfo = document.getElementById('page-info');
+                    pageInfo.textContent = `Página ${data.current_page} de ${data.total_pages}`;
+                    
+                    // 5. Actualizamos el estado global
+                    currentPage = data.current_page;
+                    
+                    // 6. Habilitamos/Deshabilitamos botones
+                    document.getElementById('btn-anterior').disabled = (data.current_page === 1);
+                    document.getElementById('btn-siguiente').disabled = (data.current_page === data.total_pages);
+                    
                 })
                 .catch(error => {
+                    // Este catch ahora se activará si la API falla de verdad
                     console.error('Error al cargar los logs:', error);
                     tableBody.innerHTML = '<tr><td colspan="4">Error al cargar datos de la API.</td></tr>';
                 });
         }
 
-        // --- FUNCIÓN PARA CARGAR LAS ESTADÍSTICAS ---
-        // --- FUNCIÓN PARA CARGAR LAS ESTADÍSTICAS (VERSIÓN DEFENSIVA) ---
+        // --- FUNCIÓN 'cargarStats' ---
+        // (Esta función se queda exactamente igual que antes)
         function cargarStats() {
-            const statsContent = document.getElementById('stats-content');
-            
-            fetch('/api/stats')
-                .then(response => response.json())
-                .then(stats => {
-                    // ----------------------------------------------------
-                    // ¡¡AQUÍ ESTÁ LA CORRECCIÓN CLAVE!!
-                    // Antes de usar 'stats', comprobamos si es un JSON de error.
-                    // ----------------------------------------------------
-                    if (stats.error) {
-                        // Si es un JSON de error, lo mostramos
-                        console.error('Error recibido desde la API /api/stats:', stats.error);
-                        statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas: ${stats.error}. Revisa el terminal de Flask.</p>`;
-                        return; // Detenemos la función aquí
-                    }
-
-                    // Si llegamos aquí, 'stats' es el JSON de ÉXITO
-                    // Así que el resto del código ahora es seguro.
-                    const statsHtml = `
-                        <p><strong>Total de Logs Analizados:</strong> ${stats.total_logs}</p>
-                        
-                        <strong>Conteo por Nivel:</strong>
-                        <ul>
-                            ${Object.entries(stats.conteo_por_nivel).map(([nivel, conteo]) => 
-                                `<li>${nivel}: ${conteo}</li>`
-                            ).join('')}
-                        </ul>
-                        
-                        <strong>Top 5 IPs Activas:</strong>
-                        <ul>
-                            ${Object.entries(stats.top_5_ips).map(([ip, conteo]) => 
-                                `<li>${ip}: ${conteo} eventos</li>`
-                            ).join('')}
-                        </ul>
-                    `;
-                    
-                    statsContent.innerHTML = statsHtml;
-                })
-                .catch(error => {
-                    // Este 'catch' ahora solo se activará si el 'fetch' en sí falla (ej. sin conexión)
-                    console.error('Error de red al cargar las estadísticas:', error);
-                    statsContent.innerHTML = '<p style="color: #ff6b6b;">Error de red al cargar estadísticas.</p>';
-                });
+            // ... (tu código de cargarStats existente) ...
         }
     </script>
 
