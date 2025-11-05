@@ -1,11 +1,12 @@
 # models.py
-# Modulo 3:programacion orientada a objetos
-# Contiene las clases que modelan nuestros datos
+# Modulo 3 y 4: clases y herencia
 
+# --- CLASE PADRE, SUPERCLASE O BASE: LogEvent ---
 class LogEvent:
     """
     Representa un unico evento de log como un objeto
-    Contiene los datos del log como atributos
+    Contiene los datos del log como atributos y
+    la logica de analisis como metodos
     """
 
     # --- CONSTRUCTOR ---
@@ -29,8 +30,6 @@ class LogEvent:
         """
         Analiza los atributos del propio objeto y DEVUELVE su severidad
         """
-        # En lugar de de log_a_procesar.nivel, usamos self.nivel
-        # self se refiere a este objeto en particular
 
         if self.nivel == "ERROR":
             return "ALERTA"
@@ -39,4 +38,21 @@ class LogEvent:
         else:
             return "INFORMACION"
 
-    
+
+# --- CLASE HIJO O SUBCLASE [MODULO 4.1] ---
+# Estas clases heredan TODO de LogEvent
+
+class ErrorLogEvent(LogEvent):
+    # Esta clase ahora tiene __init__ y obtener_severidad()
+    # aunque no veamos el código aquí.
+    # 'pass' es una palabra clave de Python que significa:
+    # "No quiero añadir nada nuevo, esta clase está intencionalmente vacía".
+    pass
+
+class WarnLogEvent(LogEvent):
+    # Esta clase tambien hereda de LogEvent
+    pass
+
+class InfoLogEvent(LogEvent):
+    # Esta clase tambien hereda de LogEvent
+    pass

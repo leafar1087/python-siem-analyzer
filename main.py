@@ -2,9 +2,9 @@
 
 # --- IMPORTACIONES ---
 
-from models import LogEvent # Importamos la clase LogEvent
+from models import LogEvent, ErrorLogEvent, WarnLogEvent, InfoLogEvent # Importamos las clases LogEvent, ErrorLogEvent, WarnLogEvent y InfoLogEvent
 
-print("--- Iniciando Analizador SIEM v0.8 (POO PURA) ---")
+print("--- Iniciando Analizador SIEM v0.9 (POO PURA + HERENCIA) ---")
 
 
 # --- DEFINICION DE DATOS ---
@@ -53,16 +53,23 @@ log_data_cruda = [
 print("\n--- TRANSFORMANDO DATOS CRUDOS A OBJETOS LOG ---")
 lista_de_objetos_log = []
 for log_dict in log_data_cruda:
-    # Se crea el objeto
-    # Llamamos a la clase como si fuera una funcion
-    # Esto ejecuta automaticamente el metodo __init__
 
-    nuevo_log_obj = LogEvent(
-        timestamp=log_dict['timestamp'],
-        nivel=log_dict['nivel'],
-        mensaje=log_dict['mensaje'],
-        ip=log_dict['ip']
-    )
+
+    # extraemos los datos comunes del diccionario
+    timestamp=log_dict['timestamp']
+    nivel=log_dict['nivel']
+    mensaje=log_dict['mensaje']
+    ip=log_dict['ip']
+    
+
+    # Decidimos que tipo de objeto crear basado en el nivel del log
+    if nivel == "ERROR":
+        nuevo_log_obj = ErrorLogEvent(timestamp, nivel, mensaje, ip)
+    elif nivel == "WARN":
+        nuevo_log_obj = WarnLogEvent(timestamp, nivel, mensaje, ip)
+    else:
+        nuevo_log_obj = InfoLogEvent(timestamp, nivel, mensaje, ip)
+
 
     lista_de_objetos_log.append(nuevo_log_obj)
 
@@ -72,6 +79,10 @@ print("\n--- COMENZANDO ANALISIS EN LOTES ---")
 # iteramos sobre nuestra lista de objetos
 
 for log in lista_de_objetos_log:
+
+    # ESTA LINEA NO CAMBIA NADA
+    # aunque 'log' es un ErrorLogEvent, WarnLogEvent o InfoLogEvent,
+    # heredó el metodo obtener_severidad() de LogEvent
     severidad = log.obtener_severidad() # Llamamos al metodo del objeto
 
     print(f"Log: {log.timestamp} | IP: {log.ip} | Nivel: {log.nivel}")
