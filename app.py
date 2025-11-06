@@ -3,7 +3,7 @@ import ollama
 import json, sys, pandas as pd, traceback, hashlib
 # importamos el modulo render_template para poder renderizar nuestras plantillas HTML
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
-from models import LogEvent, ErrorLogEvent, WarnLogEvent, InfoLogEvent
+
 # ... (importaciones existentes)
 
 # --- Nuevas importaciones para la Capa 0: Seguridad ---
