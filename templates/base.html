@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SIEM Dashboard{% endblock %}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -77,6 +78,55 @@
             padding: 15px; background-color: #ff6b6b; color: white;
             border-radius: 4px; margin-bottom: 15px;
         }
+
+        /* ... (tu CSS existente de body, nav, etc.) ... */
+
+        /* --- ¡NUEVO CSS PARA EL LAYOUT DEL DASHBOARD! --- */
+        .dashboard-grid {
+            display: grid;
+            /* Columna izq. 1 parte, Columna der. 2 partes */
+            grid-template-columns: 1fr 2fr; 
+            gap: 20px;
+        }
+
+        /* En pantallas pequeñas (móviles/tablets), apilamos las columnas */
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr; /* Una sola columna */
+            }
+        }
+
+            /* --- CSS MODIFICADO PARA LOS GRÁFICOS --- */
+                
+        /* Contenedor para los DOS gráficos (Tarta y Barras) */
+        .stats-content {
+            display: flex;
+            flex-direction: column; /* ¡Apila Tarta y Barras verticalmente DENTRO de la col. izq.! */
+            gap: 20px;
+        }
+
+        /* Contenedor individual para CADA gráfico */
+        .chart-container {
+            /* El ancho máximo ya no es necesario, la columna del grid lo controla */
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .chart-container h3 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+        }
+
+
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .chart-container {
+            max-width: 100%; /* En pantallas pequeñas, ocupa todo el ancho */
+        }
+    }
     </style>
 </head>
 <body>

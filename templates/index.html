@@ -1,44 +1,65 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard - SIEM{% endblock %}
+
 {% block content %}
 
-    <div id="stats-container">
-        <h2>Estadísticas Clave</h2>
-        <div id="stats-content">
-            <p>Cargando estadísticas...</p>
+    <div class="dashboard-grid">
+
+        <div id="stats-container">
+            <h2>Estadísticas Clave</h2>
+            
+            <div class="stats-content"> 
+                <div class="chart-container">
+                    <h3>Conteo por Nivel</h3>
+                    <canvas id="chartNivel"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Top IPs Activas</h3>
+                    <canvas id="chartIPs"></canvas>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div id="log-container">
-        <h2>Logs en Vivo</h2>
-        <table width="100%">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>IP de Origen</th>
-                    <th>Severidad</th>
-                    <th>Mensaje</th>
-                </tr>
-            </thead>
-            <tbody id="log-table-body">
-                <tr><td colspan="4">Cargando datos desde la API...</td></tr>
-            </tbody>
-        </table>
+        <div id="log-container">
+            <h2>Logs en Vivo</h2>
+            
+            <table width="100%">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>IP de Origen</th>
+                        <th>Severidad</th>
+                        <th>Mensaje</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body">
+                    <tr><td colspan="4">Cargando datos desde la API...</td></tr>
+                </tbody>
+            </table>
 
-        <div id="pagination-controls" style="margin-top: 15px; text-align: center;">
-            <button id="btn-anterior" onclick="cambiarPagina('anterior')">&laquo; Anterior</button>
-            <span id="page-info" style="margin: 0 15px;">Página ? de ?</span>
-            <button id="btn-siguiente" onclick="cambiarPagina('siguiente')">Siguiente &raquo;</button>
+            <div id="pagination-controls" style="margin-top: 15px; text-align: center;">
+                <button id="btn-anterior" onclick="cambiarPagina('anterior')">&laquo; Anterior</button>
+                <span id="page-info" style="margin: 0 15px;">Página ? de ?</span>
+                <button id="btn-siguiente" onclick="cambiarPagina('siguiente')">Siguiente &raquo;</button>
+            </div>
         </div>
-    </div>
 
+    </div> 
 {% endblock %}
+
+
 
 {% block scripts %}
 <script>
     // --- VARIABLES GLOBALES PARA ESTADO ---
     let currentPage = 1;
-    const logsPorPagina = 10; 
+    const logsPorPagina = 10;
+
+    // --- Variables globales para los gráficos (¡IMPORTANTE!) ---
+    // Las guardamos aquí para poder "destruirlas" antes de volver a dibujarlas
+    let chartNivelInstance;
+    let chartIPsInstance;
 
     // Este script se ejecuta cuando el navegador termina de cargar la página
     document.addEventListener('DOMContentLoaded', () => {
@@ -46,7 +67,7 @@
         cargarStats();
     });
 
-    // ... (Tu función 'cambiarPagina' completa aquí) ...
+    // --- FUNCIÓN 'cambiarPagina' (Sin cambios) ---
     function cambiarPagina(direccion) {
         if (direccion === 'siguiente') {
             currentPage++;
@@ -56,7 +77,7 @@
         cargarLogs(currentPage);
     }
 
-    // ... (Tu función 'cargarLogs' completa aquí) ...
+    // --- FUNCIÓN 'cargarLogs' (Sin cambios) ---
     function cargarLogs(page) {
         const tableBody = document.getElementById('log-table-body');
         fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}`)
@@ -91,33 +112,86 @@
             });
     }
 
-    // ... (Tu función 'cargarStats' completa aquí) ...
+    // --- ¡¡FUNCIÓN 'cargarStats' TOTALMENTE REESCRITA!! ---
     function cargarStats() {
         const statsContent = document.getElementById('stats-content');
+
         fetch('/api/stats')
             .then(response => response.json())
             .then(stats => {
                 if (stats.error) {
                     console.error('Error recibido desde la API /api/stats:', stats.error);
-                    statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas: ${stats.error}. Revisa el terminal de Flask.</p>`;
+                    statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas.</p>`;
                     return; 
                 }
-                const statsHtml = `
-                    <p><strong>Total de Logs Analizados:</strong> ${stats.total_logs}</p>
-                    <strong>Conteo por Nivel:</strong>
-                    <ul>
-                        ${Object.entries(stats.conteo_por_nivel).map(([nivel, conteo]) => 
-                            `<li>${nivel}: ${conteo}</li>`
-                        ).join('')}
-                    </ul>
-                    <strong>Top 5 IPs Activas:</strong>
-                    <ul>
-                        ${Object.entries(stats.top_5_ips).map(([ip, conteo]) => 
-                            `<li>${ip}: ${conteo} eventos</li>`
-                        ).join('')}
-                    </ul>
-                `;
-                statsContent.innerHTML = statsHtml;
+
+                // ¡Aquí dibujamos los gráficos!
+
+                // --- 1. Gráfico de Tarta (Niveles) ---
+                const ctxNivel = document.getElementById('chartNivel').getContext('2d');
+
+                // Destruimos el gráfico anterior si existe (para evitar bugs al refrescar)
+                if (chartNivelInstance) {
+                    chartNivelInstance.destroy();
+                }
+
+                chartNivelInstance = new Chart(ctxNivel, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(stats.conteo_por_nivel),
+                        datasets: [{
+                            label: 'Conteo por Nivel',
+                            data: Object.values(stats.conteo_por_nivel),
+                            backgroundColor: [
+                                'rgba(255, 107, 107, 0.7)', // Rojo (ERROR)
+                                'rgba(110, 219, 110, 0.7)', // Verde (INFO)
+                                'rgba(255, 184, 108, 0.7)'  // Naranja (WARN)
+                            ],
+                            borderColor: '#1e1e1e',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { labels: { color: '#e0e0e0' } } }
+                    }
+                });
+
+                // --- 2. Gráfico de Barras (Top IPs) ---
+                const ctxIPs = document.getElementById('chartIPs').getContext('2d');
+
+                if (chartIPsInstance) {
+                    chartIPsInstance.destroy();
+                }
+
+                chartIPsInstance = new Chart(ctxIPs, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(stats.top_5_ips),
+                        datasets: [{
+                            label: 'Eventos por IP',
+                            data: Object.values(stats.top_5_ips),
+                            backgroundColor: 'rgba(76, 175, 80, 0.7)', // Verde SIEM
+                            borderColor: 'rgba(76, 175, 80, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { 
+                                beginAtZero: true,
+                                ticks: { color: '#e0e0e0', stepSize: 1 },
+                                grid: { color: '#444' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: '#444' }
+                            }
+                        }
+                    }
+                });
             })
             .catch(error => {
                 console.error('Error de red al cargar las estadísticas:', error);
