@@ -21,6 +21,13 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 
 ## 📖 Descripción
 
+
+
+
+
+
+
+
 **SIEM Analyzer** es una aplicación web completa diseñada para analizar y gestionar logs de seguridad en tiempo real. El sistema permite:
 
 - **Ingesta de Logs**: Carga archivos JSON con eventos de seguridad
@@ -40,6 +47,8 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 
 ### 📊 Visualización y Análisis
 
+<img width="2941" height="1917" alt="image" src="https://github.com/user-attachments/assets/b8bf6cb4-ac43-4b21-bf5e-7dd819842f9b" />
+
 - **Dashboard en Tiempo Real**: Actualización automática cada 5 segundos
 - **Gráficos Interactivos**: 
   - Gráfico de tarta para distribución por nivel (ERROR, WARN, INFO)
@@ -52,6 +61,9 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 - Análisis automático de alertas de seguridad
 - Sugerencias de mitigación e investigación
 - Interfaz modal para consultas de IA
+
+  <img width="1448" height="794" alt="image" src="https://github.com/user-attachments/assets/e4186361-cb1e-4c8a-9532-89398d58e3bf" />
+  
 
 ### 💾 Gestión de Datos
 - **Deduplicación Automática**: Hash SHA-256 para evitar logs duplicados
