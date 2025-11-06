@@ -1,6 +1,6 @@
 # app.py - Nuestro servidor web Flask
 
-import json, sys, pandas as pd, traceback
+import json, sys, pandas as pd, traceback, hashlib
 # importamos el modulo render_template para poder renderizar nuestras plantillas HTML
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
 from models import LogEvent, ErrorLogEvent, WarnLogEvent, InfoLogEvent
@@ -8,11 +8,13 @@ from models import LogEvent, ErrorLogEvent, WarnLogEvent, InfoLogEvent
 
 # --- Nuevas importaciones para la Capa 0: Seguridad ---
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 
 # --- FORMULARIO DE LOGIN (CAPA 0) ---
@@ -64,10 +66,43 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     # Le dice a Flask login cómo cargar un usuario
     
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
-    
+class Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # el hash unico para deduplicacion
+    # usampis index=true para que la busqueda sea mas rapida
+    log_hash = db.Column(db.String(64), index=True, unique=True, nullable=False)
+    timestamp = db.Column(db.String(100))
+    ip = db.Column(db.String(100), index=True)
+    nivel = db.Column(db.String(50))
+    severidad = db.Column(db.String(50), index=True)
+    mensaje = db.Column(db.Text)
 
+    def __init__(self, timestamp, nivel, mensaje, ip, severidad):
+        self.timestamp = timestamp
+        self.nivel = nivel
+        self.mensaje = mensaje
+        self.ip = ip
+        self.severidad = severidad
+
+        self.log_hash = self._generar_hash()
+
+    def _generar_hash(self):
+        string_unico = f"{self.timestamp}-{self.ip}-{self.mensaje}"
+
+        return hashlib.sha256(string_unico.encode('utf-8')).hexdigest()
+
+    def to_dict(self):
+        return{
+            "id": self.id,
+            "timestamp": self.timestamp,
+            "ip": self.ip,
+            "nivel": self.nivel,
+            "severidad": self.severidad,
+            "mensaje": self.mensaje,
+        
+        }
 
 
 def cargar_y_analizar_logs():
@@ -109,13 +144,17 @@ def cargar_y_analizar_logs():
 
 def generar_estadisticas():
     """
-    Usa Pandas para leer el JSON y generar estadísticas.
+    Usa Pandas para leer la BASE DE DATOS y generar estadísticas.
     """
     try:
-        # 1. Leemos el JSON. 'orient="records"' es la clave que arreglamos.
-        df = pd.read_json("logs.json", orient="records")
+        # 1. Creamos una consulta de SQLAlchemy para seleccionar todos los logs
+        query = Log.query
         
-        # 2. Comprobamos si el DataFrame está vacío (buena práctica)
+        # 2. ¡La nueva magia! Pandas lee la consulta de SQLAlchemy
+        # 'db.engine' es el motor de conexión a nuestra BD (users.db)
+        df = pd.read_sql_query(query.statement, db.engine)
+
+        # 3. Comprobamos si el DataFrame está vacío
         if df.empty:
             return {
                 "total_logs": 0,
@@ -123,31 +162,35 @@ def generar_estadisticas():
                 "top_5_ips": {}
             }
 
-        # 3. Hacemos el análisis
-        # (Usa aquí la clave que corregiste, ej. 'ip_origen' o 'ip')
+        # 4. Hacemos el análisis (¡ESTO ES IDÉNTICO A ANTES!)
+        # (Asegúrate de que 'ip' coincida con tu columna)
         top_ips = df['ip'].value_counts().nlargest(5).to_dict()
         conteo_niveles = df['nivel'].value_counts().to_dict()
         
-        # 4. Preparamos la respuesta de éxito
+        # 5. Preparamos la respuesta de éxito
         stats = {
-            "total_logs": int(len(df)), # int() es una buena práctica
+            "total_logs": int(len(df)),
             "conteo_por_nivel": conteo_niveles,
             "top_5_ips": top_ips
         }
         return stats
 
-    except FileNotFoundError:
-        print("[ERROR] No se encontró el archivo logs.json")
-        return {"error": "No se encontró el archivo de logs."}
-    except KeyError as e:
-        # Si el error de 'ip_origen' regresa, esto lo atrapará
-        print(f"[ERROR] KeyError en Pandas: {e}")
-        return {"error": f"Discrepancia de nombres en logs.json. Falta la columna: {e}"}
     except Exception as e:
-        # Un 'atrapa-todo' para cualquier otro error de Pandas o de archivo
-        print(f"[ERROR] Error inesperado en generar_estadisticas: {e}")
+        db.session.rollback()
+        # Este error ahora sí debería ser visible si algo más falla
+        print(f"Error al generar estadísticas con Pandas: {e}")
         return {"error": str(e)}
-    
+
+def parsear_log_json(archivo_subido):
+    try:
+        contenido_texto = archivo_subido.read().decode('utf-8')
+        logs_crudos = json.loads(contenido_texto)
+        if not isinstance(logs_crudos, list):
+            return None, "El JSON debe ser una lista de logs"
+        return logs_crudos, None
+    except Exception as e:
+        print(f"[ERROR] Error al parsear el archivo JSON: {e}")
+        return None, f"Error al leer el archivo JSON: {str(e)}"
 
 
 # --- ENDPOINTS (RUTAS) DE NUESTRA APP
@@ -195,46 +238,45 @@ def index():
     return render_template("index.html")
 
 @app.route("/api/logs")
-@login_required # Solo un usuario logueado puede ver los logs
+@login_required 
 def get_logs():
-
+    
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
     except ValueError:
-        return jsonify({"error": "Los parámetros de página deben ser números enteros"}), 400
+        return jsonify({"error": "Parámetros 'page' y 'per_page' deben ser números."}), 400
 
-    #1. Ejecutamos toda nuestra logica de POO
-    lista_de_objetos_log = cargar_y_analizar_logs()
-    total_logs = len(lista_de_objetos_log)
-
-    start_index = (page - 1) * per_page
-    end_index = start_index + per_page
+    # --- ¡LÓGICA DE LECTURA ACTUALIZADA! ---
+    # Ya no leemos de 'logs.json', ¡consultamos la BD!
     
-    logs_para_esta_pagina = lista_de_objetos_log[start_index:end_index]
-    #2. Convertimos nuestros objetos log en diccionarios
-    # el navegador no entiende un objeto de python, pero sí un diccionario/JSON
+    # 1. Obtenemos el objeto de paginación de SQLAlchemy
+    # 'Log.query' es la base de nuestra consulta.
+    # '.order_by(Log.timestamp.desc())' muestra los logs más nuevos primero.
+    # '.paginate()' es la magia que maneja todo por nosotros.
+    try:
+        paginacion = Log.query.order_by(Log.timestamp.desc()).paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False # No da error 404 si la página está vacía
+        )
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al consultar logs: {e}")
+        return jsonify({"error": "Error interno al consultar la base de datos."}), 500
 
-    logs_como_diccionarios = []
-    for log in logs_para_esta_pagina:
-        logs_como_diccionarios.append({
-            "timestamp": log.timestamp,
-            "ip": log.ip,
-            "mensaje": log.mensaje,
-            "severidad": log.obtener_severidad() # llamamos al metodo del objeto
-        })
-
-    total_pages = (total_logs + per_page - 1) // per_page
-
-    # 3. Devolvemos la lista de diccionarios como JSON
-    # 'jsonify' convierte nuestra lista de Python en una respuesta JSON
-    # que el navegador puede entender.
-
+    # 2. 'paginacion.items' contiene la lista de objetos Log para esta página
+    logs_para_esta_pagina = paginacion.items
+    
+    # 3. Convertimos los objetos Log a diccionarios
+    logs_como_diccionarios = [log.to_dict() for log in logs_para_esta_pagina]
+    
+    # 4. Devolvemos el JSON con la info de paginación del objeto
     return jsonify({
-        "logs": logs_como_diccionarios,
-        "total_pages": total_pages,
-        "current_page": page,
-        "total_logs": total_logs
+        'logs': logs_como_diccionarios,
+        'current_page': paginacion.page,
+        'total_pages': paginacion.pages,
+        'total_logs': paginacion.total
     })
 
 @app.route("/api/stats")
@@ -255,7 +297,88 @@ def get_stats():
     # 3. Si todo va bien, devuelve el JSON con éxito (código 200 por defecto)
     return jsonify(estadisticas)
 
+@app.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload_logs():
+    # Si el método es POST, significa que el usuario ha subido el formulario
+    if request.method == 'POST':
+        
+        # 1. Comprobamos que el formulario tenga una parte 'log_file'
+        if 'log_file' not in request.files:
+            flash('Error: No se encontró la parte del archivo.', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['log_file']
+        
+        # 2. Comprobamos que el usuario haya seleccionado un archivo
+        if file.filename == '':
+            flash('Error: No se seleccionó ningún archivo.', 'danger')
+            return redirect(request.url)
+            
+        if file:
+            # 3. Validamos el nombre del archivo (opcional pero seguro)
+            filename = secure_filename(file.filename)
+            
+            # --- ¡AQUÍ EMPIEZA LA INGESTA! ---
+            if filename.endswith('.json'):
+                logs_crudos, error = parsear_log_json(file)
+                if error:
+                    flash(f'Error: {error}', 'danger')
+                    return redirect(request.url)
+                
+                contador_nuevos = 0
+                contador_duplicados = 0
+                
+                # 4. Iteramos sobre los logs del archivo
+                for log_dict in logs_crudos:
+                    try:
+                        # 5. Creamos el objeto Log
+                        # (Aquí asumimos que nuestro JSON tiene las mismas claves)
+                        # Nota: Nuestra clase LogEvent/ErrorLogEvent ya no se usa aquí
+                        # Estamos creando el objeto Log de la BD directamente.
+                        
+                        # (Vamos a simular la lógica de severidad aquí mismo)
+                        nivel = log_dict.get('nivel', 'INFO')
+                        severidad = "INFO"
+                        if nivel == "ERROR":
+                            severidad = "ALERTA CRÍTICA"
+                        elif nivel == "WARN":
+                            severidad = "AVISO"
+                        
+                        nuevo_log = Log(
+                            timestamp=log_dict.get('timestamp'),
+                            ip=log_dict.get('ip'),
+                            nivel=nivel,
+                            severidad=severidad,
+                            mensaje=log_dict.get('mensaje')
+                        )
+                        # (El hash se crea automáticamente en el __init__)
+                        
+                        # 6. Intentamos añadirlo a la BD
+                        db.session.add(nuevo_log)
+                        db.session.commit() # Hacemos commit por cada uno
+                        contador_nuevos += 1
+                        
+                    except IntegrityError:
+                        # 7. ¡DEDUPLICACIÓN!
+                        # Esto falla si el hash (log_hash) ya existe.
+                        # "Deshacemos" la transacción fallida
+                        db.session.rollback()
+                        contador_duplicados += 1
+                    except Exception as e:
+                        # Otro error (ej. datos faltantes)
+                        db.session.rollback()
+                        print(f"Error al procesar log: {e}")
 
+                flash(f'¡Archivo procesado! {contador_nuevos} logs nuevos añadidos, {contador_duplicados} duplicados ignorados.', 'success')
+                return redirect(url_for('upload_logs'))
+
+            else:
+                flash('Error: Formato de archivo no soportado. Por favor, suba un .json.', 'danger')
+                return redirect(request.url)
+
+    # Si el método es GET, solo mostramos la página de subida
+    return render_template('upload.html')
 # INICIO DEL SERVIDOR
 
 if __name__ == "__main__":

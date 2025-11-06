@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SIEM Dashboard{% endblock %}</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+        }
+        /* --- ¡NUEVO MENÚ DE NAVEGACIÓN! --- */
+        nav {
+            background-color: #1e1e1e;
+            padding: 10px 20px;
+            border-bottom: 2px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav a {
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        nav a:hover {
+            background-color: #333;
+        }
+        nav .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        nav .user-actions a {
+            color: #ff6b6b; /* Rojo para logout */
+        }
+
+        /* Contenedor principal para el contenido */
+        .container {
+            padding: 20px;
+        }
+
+        /* (Estilos de H1, H2, tablas, etc. que ya teníamos) */
+        h1 { 
+            color: #4CAF50; 
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 { color: #e0e0e0; }
+        #stats-container, #log-container, .upload-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+        th { background-color: #333; }
+        button, input[type="submit"] {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            color: #ffffff;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .flash-success {
+            padding: 15px; background-color: #4CAF50; color: white;
+            border-radius: 4px; margin-bottom: 15px;
+        }
+        .flash-danger {
+            padding: 15px; background-color: #ff6b6b; color: white;
+            border-radius: 4px; margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div>
+            <span class="logo">SIEM Analizador</span>
+            <a href="{{ url_for('index') }}">Dashboard</a>
+            <a href="{{ url_for('upload_logs') }}">Subir Logs</a>
+        </div>
+        <div class="user-actions">
+            <a href="{{ url_for('logout') }}">Cerrar Sesión ({{ current_user.username }})</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

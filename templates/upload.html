@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Subir Logs - SIEM{% endblock %}
+
+{% block content %}
+    <h1>Ingesta de Nuevos Logs</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="upload-container">
+        <p>Seleccione un archivo de logs (formato .json o .log) para analizar e ingestar en la base de datos.</p>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="log_file" required>
+            <input type="submit" value="Procesar y Subir Logs">
+        </form>
+    </div>
+
+{% endblock %}

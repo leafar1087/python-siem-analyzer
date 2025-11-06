@@ -1,64 +1,14 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard SIEM</title>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 { 
-            color: #4CAF50; /* Verde ciberseguridad */
-            border-bottom: 2px solid #4CAF50;
-            padding-bottom: 10px;
-        }
-        h2 {
-            color: #e0e0e0;
-        }
-        #stats-container, #log-container {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        th, td {
-            border: 1px solid #444;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #333;
-        }
-        /* Estilos para las estadísticas */
-        #stats-content ul {
-            list-style-type: square;
-            padding-left: 20px;
-        }
-        #stats-content li {
-            margin-bottom: 5px;
-        }
-    </style>
-</head>
-<body>
-    
-    <h1>Dashboard del Analizador SIEM</h1>
-    
+{% extends "base.html" %}
+
+{% block content %}
+
     <div id="stats-container">
         <h2>Estadísticas Clave</h2>
         <div id="stats-content">
             <p>Cargando estadísticas...</p>
         </div>
     </div>
-    
+
     <div id="log-container">
         <h2>Logs en Vivo</h2>
         <table width="100%">
@@ -71,9 +21,7 @@
                 </tr>
             </thead>
             <tbody id="log-table-body">
-                <tr>
-                    <td colspan="4">Cargando datos desde la API...</td>
-                </tr>
+                <tr><td colspan="4">Cargando datos desde la API...</td></tr>
             </tbody>
         </table>
 
@@ -82,90 +30,99 @@
             <span id="page-info" style="margin: 0 15px;">Página ? de ?</span>
             <button id="btn-siguiente" onclick="cambiarPagina('siguiente')">Siguiente &raquo;</button>
         </div>
-        
     </div>
 
-    <script>
-        // --- VARIABLES GLOBALES PARA ESTADO ---
-        let currentPage = 1;
-        const logsPorPagina = 10; // O el default que pusiste en tu API
+{% endblock %}
 
-        // Este script se ejecuta cuando el navegador termina de cargar la página
-        document.addEventListener('DOMContentLoaded', () => {
-            // ¡Llamamos a las dos funciones!
-            cargarLogs(currentPage); // Carga la página 1 al iniciar
-            cargarStats();
-        });
-        
-        // --- NUEVA FUNCIÓN 'cambiarPagina' ---
-        // Esta función será llamada por los botones 'onclick'
-        function cambiarPagina(direccion) {
-            if (direccion === 'siguiente') {
-                currentPage++;
-            } else if (direccion === 'anterior') {
-                currentPage--;
-            }
-            cargarLogs(currentPage);
+{% block scripts %}
+<script>
+    // --- VARIABLES GLOBALES PARA ESTADO ---
+    let currentPage = 1;
+    const logsPorPagina = 10; 
+
+    // Este script se ejecuta cuando el navegador termina de cargar la página
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarLogs(currentPage); 
+        cargarStats();
+    });
+
+    // ... (Tu función 'cambiarPagina' completa aquí) ...
+    function cambiarPagina(direccion) {
+        if (direccion === 'siguiente') {
+            currentPage++;
+        } else if (direccion === 'anterior') {
+            currentPage--;
         }
+        cargarLogs(currentPage);
+    }
 
-        // --- ¡FUNCIÓN 'cargarLogs' ACTUALIZADA! ---
-        function cargarLogs(page) {
-            const tableBody = document.getElementById('log-table-body');
-            
-            // 1. Construimos la URL con los parámetros de paginación
-            fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}`)
-                .then(response => response.json())
-                .then(data => {
-                    // ¡Importante! 'data' ahora es un OBJETO {'logs': [...], ...}
-                    
-                    // 2. Limpiamos la tabla
-                    tableBody.innerHTML = ''; 
-                    
-                    // 3. Iteramos sobre 'data.logs', ¡no sobre 'data'!
-                    data.logs.forEach(log => {
-                        const row = document.createElement('tr');
-                        
-                        if (log.severidad.includes('ALERTA')) {
-                            row.style.color = '#ff6b6b'; 
-                        } else if (log.severidad === 'AVISO') {
-                            row.style.color = '#ffb86c';
-                        }
-                        
-                        row.innerHTML = `
-                            <td>${log.timestamp}</td>
-                            <td>${log.ip}</td>
-                            <td>${log.severidad}</td>
-                            <td>${log.mensaje}</td>
-                        `;
-                        
-                        tableBody.appendChild(row);
-                    });
-                    
-                    // 4. Actualizamos la información de paginación
-                    const pageInfo = document.getElementById('page-info');
-                    pageInfo.textContent = `Página ${data.current_page} de ${data.total_pages}`;
-                    
-                    // 5. Actualizamos el estado global
-                    currentPage = data.current_page;
-                    
-                    // 6. Habilitamos/Deshabilitamos botones
-                    document.getElementById('btn-anterior').disabled = (data.current_page === 1);
-                    document.getElementById('btn-siguiente').disabled = (data.current_page === data.total_pages);
-                    
-                })
-                .catch(error => {
-                    // Este catch ahora se activará si la API falla de verdad
-                    console.error('Error al cargar los logs:', error);
-                    tableBody.innerHTML = '<tr><td colspan="4">Error al cargar datos de la API.</td></tr>';
+    // ... (Tu función 'cargarLogs' completa aquí) ...
+    function cargarLogs(page) {
+        const tableBody = document.getElementById('log-table-body');
+        fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}`)
+            .then(response => response.json())
+            .then(data => {
+                tableBody.innerHTML = ''; 
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    if (log.severidad.includes('ALERTA')) {
+                        row.style.color = '#ff6b6b'; 
+                    } else if (log.severidad === 'AVISO') {
+                        row.style.color = '#ffb86c';
+                    }
+                    row.innerHTML = `
+                        <td>${log.timestamp}</td>
+                        <td>${log.ip}</td>
+                        <td>${log.severidad}</td>
+                        <td>${log.mensaje}</td>
+                    `;
+                    tableBody.appendChild(row);
                 });
-        }
 
-        // --- FUNCIÓN 'cargarStats' ---
-        // (Esta función se queda exactamente igual que antes)
-        function cargarStats() {
-            // ... (tu código de cargarStats existente) ...
-        }
-    </script>
+                const pageInfo = document.getElementById('page-info');
+                pageInfo.textContent = `Página ${data.current_page} de ${data.total_pages}`;
+                currentPage = data.current_page;
+                document.getElementById('btn-anterior').disabled = (data.current_page === 1);
+                document.getElementById('btn-siguiente').disabled = (data.current_page === data.total_pages);
+            })
+            .catch(error => {
+                console.error('Error al cargar los logs:', error);
+                tableBody.innerHTML = '<tr><td colspan="4">Error al cargar datos de la API.</td></tr>';
+            });
+    }
 
-</body>
-</html>
+    // ... (Tu función 'cargarStats' completa aquí) ...
+    function cargarStats() {
+        const statsContent = document.getElementById('stats-content');
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(stats => {
+                if (stats.error) {
+                    console.error('Error recibido desde la API /api/stats:', stats.error);
+                    statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas: ${stats.error}. Revisa el terminal de Flask.</p>`;
+                    return; 
+                }
+                const statsHtml = `
+                    <p><strong>Total de Logs Analizados:</strong> ${stats.total_logs}</p>
+                    <strong>Conteo por Nivel:</strong>
+                    <ul>
+                        ${Object.entries(stats.conteo_por_nivel).map(([nivel, conteo]) => 
+                            `<li>${nivel}: ${conteo}</li>`
+                        ).join('')}
+                    </ul>
+                    <strong>Top 5 IPs Activas:</strong>
+                    <ul>
+                        ${Object.entries(stats.top_5_ips).map(([ip, conteo]) => 
+                            `<li>${ip}: ${conteo} eventos</li>`
+                        ).join('')}
+                    </ul>
+                `;
+                statsContent.innerHTML = statsHtml;
+            })
+            .catch(error => {
+                console.error('Error de red al cargar las estadísticas:', error);
+                statsContent.innerHTML = '<p style="color: #ff6b6b;">Error de red al cargar estadísticas.</p>';
+            });
+    }
+</script>
+{% endblock %}
