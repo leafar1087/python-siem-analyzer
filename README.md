@@ -233,7 +233,6 @@ El servidor estará disponible en: `http://localhost:5000`
 python-siem-analyzer/
 │
 ├── app.py                 # Aplicación principal Flask
-├── models.py              # Modelos de datos (LogEvent, ErrorLogEvent, etc.)
 ├── simulador.py           # Simulador de logs en tiempo real
 ├── requirements.txt       # Dependencias del proyecto (crear si no existe)
 ├── README.md              # Este archivo
