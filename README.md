@@ -39,6 +39,7 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 - Validación de formularios con WTForms
 
 ### 📊 Visualización y Análisis
+
 - **Dashboard en Tiempo Real**: Actualización automática cada 5 segundos
 - **Gráficos Interactivos**: 
   - Gráfico de tarta para distribución por nivel (ERROR, WARN, INFO)
@@ -437,9 +438,14 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## 👤 Autor
 
+## 👤 Autor
+
+Desarrollado por **Rafael Pérez** 
+
+* **LinkedIn:** [https://www.linkedin.com/in/rperezll/]
+* **GitHub:** [https://github.com/leafar1087]
+
 Desarrollado como proyecto educativo de análisis SIEM con Python y Flask.
-
-
 
 **Nota**: Este es un proyecto educativo. Para uso en producción, implementa medidas de seguridad adicionales y realiza auditorías de seguridad.
 
