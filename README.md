@@ -438,8 +438,6 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## 👤 Autor
 
-## 👤 Autor
-
 Desarrollado por **Rafael Pérez** 
 
 * **LinkedIn:** [https://www.linkedin.com/in/rperezll/]
