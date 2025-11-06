@@ -16,6 +16,8 @@ from wtforms.validators import DataRequired
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
+from flask_wtf.csrf import CSRFProtect
+
 
 # --- FORMULARIO DE LOGIN (CAPA 0) ---
 
@@ -28,6 +30,7 @@ class LoginForm(FlaskForm):
 
 # 1. Creamos la aplicacion Flask
 app = Flask(__name__)
+CSRFProtect(app)
 
 # --- CONFIGURACIÓN DE SEGURIDAD (CAPA 0) ---
 
@@ -382,6 +385,7 @@ def upload_logs():
 
 # --- ENDPOINT DE IA (MÓDULO 5) ---
 
+
 @app.route('/api/explain', methods=['POST'])
 @login_required
 def explain_log():
@@ -398,21 +402,23 @@ def explain_log():
         
     log_message = data.get('mensaje')
 
-    # 2. Ingeniería de Prompts (¡La parte clave!)
-    # Le damos un rol y una tarea específica a la IA
-    prompt = f"""
-    Eres un analista experto en ciberseguridad (SOC Nivel 3).
-    Tu trabajo es explicar alertas de log a un analista junior (Nivel 1).
-    Usa un tono profesional, claro y conciso.
+    # 2. Ingeniería de Prompts (La nueva versión limpia)
+    # Le damos un "rol" de sistema con instrucciones claras y un formato.
+    system_prompt = """
+    Eres un analista de ciberseguridad (SOC Nivel 3) experto.
+    Tu trabajo es explicar alertas a un analista junior.
+    Sé profesional, claro y muy conciso. No uses saludos ni despedidas.
+    Responde SIEMPRE en español.
+
+    Tu respuesta debe tener este formato EXACTO:
     
-    TAREA:
-    1. Explica la siguiente alerta de log en una o dos frases simples.
-    2. Sugiere UNA acción de mitigación o investigación inmediata.
+    EXPLICACIÓN: [Tu explicación de 1-2 frases aquí]
     
-    ALERTA: "{log_message}"
-    
-    RESPUESTA:
+    ACCIÓN INMEDIATA: [Tu sugerencia de 1-2 acciones aquí]
     """
+    
+    # Esta es la "pregunta" que le hacemos
+    user_prompt = f"Analiza esta alerta de log: '{log_message}'"
 
     try:
         # 3. Llamamos a Ollama (que corre en local)
@@ -421,9 +427,10 @@ def explain_log():
         response = ollama.chat(
             model='phi3:mini', # ¡Usamos el modelo ligero!
             messages=[
-                {'role': 'user', 'content': prompt}
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt}
             ],
-            stream=False # Queremos la respuesta completa, no un stream
+            stream=False # Queremos la respuesta completa
         )
         
         # 4. Extraemos y devolvemos la respuesta

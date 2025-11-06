@@ -243,11 +243,14 @@
             document.getElementById('ai-log-mensaje').textContent = mensajeLog;
             document.getElementById('ai-respuesta').innerHTML = "<p>Consultando al modelo (phi3:mini)...</p>";
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
             // 2. Llamamos a nuestra nueva API de IA (¡con POST!)
             fetch('/api/explain', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
                 // 3. Enviamos el mensaje del log en el body
                 body: JSON.stringify({ 
