@@ -31,6 +31,7 @@
                         <th>IP de Origen</th>
                         <th>Severidad</th>
                         <th>Mensaje</th>
+                        <th>Analizar</th>
                     </tr>
                 </thead>
                 <tbody id="log-table-body">
@@ -45,7 +46,21 @@
             </div>
         </div>
 
-    </div> 
+    </div>
+
+    </div> <div id="ai-modal" class="modal-oculto">
+        <div class="modal-contenido">
+            <span class_ ="modal-cerrar" onclick="cerrarModal()">&times;</span>
+            <h2>🤖 Asistente de Análisis de IA</h2>
+            <p><strong>Analizando Log:</strong> <em id="ai-log-mensaje"></em></p>
+            <hr>
+            <div id="ai-respuesta">
+                <p>Consultando al modelo local (phi3:mini)...</p>
+            </div>
+        </div>
+    </div>
+
+
 {% endblock %}
 
 
@@ -65,6 +80,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         cargarLogs(currentPage); 
         cargarStats();
+
+        setInterval(() =>{
+            console.log("Actualizando dashboard en vivo...");
+            cargarLogs(currentPage);
+            cargarStats();
+        }, 5000);
     });
 
     // --- FUNCIÓN 'cambiarPagina' (Sin cambios) ---
@@ -96,6 +117,11 @@
                         <td>${log.ip}</td>
                         <td>${log.severidad}</td>
                         <td>${log.mensaje}</td>
+                        <td>
+                            ${log.severidad.includes('ALERTA') || log.severidad.includes('AVISO') ? 
+                                `<button class="btn-ia" onclick="analizarLogIA('${log.mensaje}')">🤖 IA</button>` :
+                                ''}
+                        </td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -198,5 +224,54 @@
                 statsContent.innerHTML = '<p style="color: #ff6b6b;">Error de red al cargar estadísticas.</p>';
             });
     }
+
+    // ... (Tu función cargarStats() termina aquí) ...
+
+        // --- ¡NUEVAS FUNCIONES DE IA (MÓDULO 5)! ---
+
+        function abrirModal() {
+            document.getElementById('ai-modal').style.display = 'block';
+        }
+
+        function cerrarModal() {
+            document.getElementById('ai-modal').style.display = 'none';
+        }
+
+        function analizarLogIA(mensajeLog) {
+            // 1. Abrimos el modal y mostramos un estado de "cargando"
+            abrirModal();
+            document.getElementById('ai-log-mensaje').textContent = mensajeLog;
+            document.getElementById('ai-respuesta').innerHTML = "<p>Consultando al modelo (phi3:mini)...</p>";
+
+            // 2. Llamamos a nuestra nueva API de IA (¡con POST!)
+            fetch('/api/explain', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // 3. Enviamos el mensaje del log en el body
+                body: JSON.stringify({ 
+                    mensaje: mensajeLog 
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Si el servidor da un error (ej. 500), lo manejamos
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 4. ¡Éxito! Mostramos la explicación de la IA
+                // (Usamos <pre> para preservar los saltos de línea que dé la IA)
+                document.getElementById('ai-respuesta').innerHTML = `<pre>${data.explicacion}</pre>`;
+            })
+            .catch(error => {
+                // 5. Manejamos cualquier error (de red o del servidor)
+                console.error('Error al analizar con IA:', error);
+                document.getElementById('ai-respuesta').innerHTML = `<p style="color: #ff6b6b;">Error: ${error.error || 'No se pudo contactar a la IA.'}</p>`;
+            });
+        }
+ 
 </script>
 {% endblock %}

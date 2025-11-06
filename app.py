@@ -1,5 +1,5 @@
 # app.py - Nuestro servidor web Flask
-
+import ollama
 import json, sys, pandas as pd, traceback, hashlib
 # importamos el modulo render_template para poder renderizar nuestras plantillas HTML
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
@@ -379,6 +379,65 @@ def upload_logs():
 
     # Si el método es GET, solo mostramos la página de subida
     return render_template('upload.html')
+
+# --- ENDPOINT DE IA (MÓDULO 5) ---
+
+@app.route('/api/explain', methods=['POST'])
+@login_required
+def explain_log():
+    """
+    Recibe un mensaje de log y devuelve una explicación
+    generada por el LLM local (Ollama).
+    """
+    
+    # 1. Obtenemos el log del frontend
+    # Usamos POST, así que los datos vienen en el 'body' como JSON
+    data = request.get_json()
+    if not data or 'mensaje' not in data:
+        return jsonify({"error": "No se proporcionó ningún mensaje de log."}), 400
+        
+    log_message = data.get('mensaje')
+
+    # 2. Ingeniería de Prompts (¡La parte clave!)
+    # Le damos un rol y una tarea específica a la IA
+    prompt = f"""
+    Eres un analista experto en ciberseguridad (SOC Nivel 3).
+    Tu trabajo es explicar alertas de log a un analista junior (Nivel 1).
+    Usa un tono profesional, claro y conciso.
+    
+    TAREA:
+    1. Explica la siguiente alerta de log en una o dos frases simples.
+    2. Sugiere UNA acción de mitigación o investigación inmediata.
+    
+    ALERTA: "{log_message}"
+    
+    RESPUESTA:
+    """
+
+    try:
+        # 3. Llamamos a Ollama (que corre en local)
+        print(f"[IA] Consultando a phi3:mini sobre: '{log_message}'")
+        
+        response = ollama.chat(
+            model='phi3:mini', # ¡Usamos el modelo ligero!
+            messages=[
+                {'role': 'user', 'content': prompt}
+            ],
+            stream=False # Queremos la respuesta completa, no un stream
+        )
+        
+        # 4. Extraemos y devolvemos la respuesta
+        explicacion = response['message']['content']
+        print(f"[IA] Respuesta recibida: {explicacion}")
+        
+        return jsonify({'explicacion': explicacion})
+
+    except Exception as e:
+        # Esto fallará si el servicio 'Ollama' no está corriendo en tu Mac
+        print(f"[IA] ERROR: No se pudo conectar al servicio de Ollama. {e}")
+        return jsonify({"error": "No se pudo contactar al asistente de IA. ¿Está Ollama corriendo?"}), 500
+
+
 # INICIO DEL SERVIDOR
 
 if __name__ == "__main__":
