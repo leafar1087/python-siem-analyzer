@@ -3,23 +3,50 @@
 {% block title %}Subir Logs - SIEM{% endblock %}
 
 {% block content %}
-    <h1>Ingesta de Nuevos Logs</h1>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-cloud-upload-alt mr-2"></i>Ingesta de Logs</h6>
+            </div>
+            <div class="card-body p-4">
+                <p class="mb-4">
+                    Sube archivos JSON generados por el simulador para analizarlos en el sistema.
+                </p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group mb-4">
+                        <label for="log_file">Seleccionar Archivo (.json)</label>
+                        <input class="form-control-file" type="file" id="log_file" name="log_file" accept=".json">
+                    </div>
 
-    <div class="upload-container">
-        <p>Seleccione un archivo de logs (formato .json o .log) para analizar e ingestar en la base de datos.</p>
-
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="log_file" required>
-            <input type="submit" value="Procesar y Subir Logs">
-        </form>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-upload mr-2"></i>Procesar Archivo
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-block">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Nota</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">El sistema deduplicará automáticamente los logs basándose en su contenido.</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-info-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
+</div>
 {% endblock %}

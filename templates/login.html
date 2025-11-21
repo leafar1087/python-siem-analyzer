@@ -1,97 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Iniciar Sesión - SIEM</title>
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .login-container {
-            padding: 30px;
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            width: 300px;
-        }
-        h1 { 
-            color: #4CAF50;
-            text-align: center;
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        form div {
-            margin-bottom: 15px;
-        }
-        form label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        form input[type="text"],
-        form input[type="password"] {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box; /* Importante para que el padding no rompa el ancho */
-            background-color: #333;
-            border: 1px solid #555;
-            color: #e0e0e0;
-            border-radius: 4px;
-        }
-        form input[type="submit"] {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 4px;
-            color: #ffffff;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        /* Clase para los mensajes de error de Flask ('flash') */
-        .flash-error {
-            color: #ff6b6b; /* Rojo */
-            background-color: rgba(255, 107, 107, 0.1);
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <h1>SIEM Login</h1>
-        
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="flash-error">
-                {{ messages[0] }}
-            </div>
-        {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <form method="POST" action="">
-            {{ form.hidden_tag() }} 
-            
-            <div>
-                {{ form.username.label }}<br>
-                {{ form.username(size=32) }}
+{% block title %}Login - SIEM{% endblock %}
+
+{% block body_class %}bg-gradient-primary{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <!-- Outer Row -->
+    <div class="row justify-content-center">
+
+        <div class="col-xl-10 col-lg-12 col-md-9">
+
+            <div class="card o-hidden border-0 shadow-lg my-5">
+                <div class="card-body p-0">
+                    <!-- Nested Row within Card Body -->
+                    <div class="row">
+                        <div class="col-lg-6 d-none d-lg-block bg-login-image" style="background: url('https://source.unsplash.com/Kz8nHVg_tGI/600x800'); background-position: center; background-size: cover;"></div>
+                        <div class="col-lg-6">
+                            <div class="p-5">
+                                <div class="text-center">
+                                    <h1 class="h4 text-gray-900 mb-4">¡Bienvenido de nuevo!</h1>
+                                </div>
+                                <form class="user" method="POST">
+                                    {{ form.hidden_tag() }}
+                                    <div class="form-group">
+                                        {{ form.username(class="form-control form-control-user", placeholder="Ingresa tu usuario...") }}
+                                    </div>
+                                    <div class="form-group">
+                                        {{ form.password(class="form-control form-control-user", placeholder="Contraseña") }}
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox small">
+                                            <input type="checkbox" class="custom-control-input" id="customCheck">
+                                            <label class="custom-control-label" for="customCheck">Recuérdame</label>
+                                        </div>
+                                    </div>
+                                    {{ form.submit(class="btn btn-primary btn-user btn-block") }}
+                                </form>
+                                <hr>
+                                <div class="text-center">
+                                    <a class="small" href="#">¿Olvidaste tu contraseña?</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div>
-                {{ form.password.label }}<br>
-                {{ form.password(size=32) }}
-            </div>
-            <div>
-                {{ form.submit() }}
-            </div>
-        </form>
+
+        </div>
+
     </div>
-</body>
-</html>
+
+</div>
+{% endblock %}

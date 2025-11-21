@@ -33,27 +33,39 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 ## ✨ Características Principales
 
 ### 🔐 Seguridad (Capa 0)
+
 - Sistema de autenticación con Flask-Login
 - Contraseñas cifradas con Werkzeug
 - Protección de rutas con decoradores `@login_required`
 - Validación de formularios con WTForms
 
+### 🎨 Nueva Interfaz de Usuario (v2.0)
+
+- **Tema SB Admin 2**: Diseño moderno y profesional basado en Bootstrap 4
+- **Layout Responsivo**: Barra lateral colapsable y barra superior de navegación
+- **Modo Oscuro/Claro**: Estilos optimizados para legibilidad
+
 ### 📊 Visualización y Análisis
 
 - **Dashboard en Tiempo Real**: Actualización automática cada 5 segundos
-- **Gráficos Interactivos**: 
-  - Gráfico de tarta para distribución por nivel (ERROR, WARN, INFO)
+- **Búsqueda Global**: Filtrado instantáneo de logs por IP, mensaje o nivel
+- **Paginación Avanzada**:
+  - Selector de tamaño de página (10, 25, 50, 100)
+  - Navegación rápida (Primero, Anterior, Siguiente, Último)
+- **Gráficos Interactivos**:
+  - Gráfico de tarta para distribución por nivel
   - Gráfico de barras para Top 5 IPs más activas
-- **Paginación de Logs**: Navegación eficiente con 10 logs por página
-- **Código de Colores**: Alertas críticas en rojo, avisos en naranja
+- **Código de Colores**: Alertas visuales para niveles ERROR y WARN
 
 ### 🤖 Inteligencia Artificial
+
 - Integración con **Ollama** (modelo phi3:mini)
 - Análisis automático de alertas de seguridad
 - Sugerencias de mitigación e investigación
 - Interfaz modal para consultas de IA
 
 ### 💾 Gestión de Datos
+
 - **Deduplicación Automática**: Hash SHA-256 para evitar logs duplicados
 - **Base de Datos SQLite**: Almacenamiento persistente y eficiente
 - **Análisis con Pandas**: Estadísticas avanzadas sobre los logs
@@ -62,6 +74,7 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 ## 🛠 Tecnologías Utilizadas
 
 ### Backend
+
 - **Flask 2.x**: Framework web de Python
 - **Flask-SQLAlchemy**: ORM para gestión de base de datos
 - **Flask-Login**: Manejo de sesiones de usuario
@@ -71,12 +84,15 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 - **Ollama**: Integración con modelos de IA locales
 
 ### Frontend
-- **HTML5/CSS3**: Estructura y estilos
-- **JavaScript (Vanilla)**: Lógica del cliente
-- **Chart.js**: Visualización de gráficos
+
+- **SB Admin 2**: Tema administrativo basado en Bootstrap 4
+- **HTML5/CSS3**: Estructura y estilos personalizados
+- **JavaScript (jQuery)**: Lógica del cliente y manipulación del DOM
+- **Chart.js 2.9.4**: Visualización de gráficos (versión compatible con SB Admin 2)
 - **Jinja2**: Motor de plantillas de Flask
 
 ### Base de Datos
+
 - **SQLite**: Base de datos relacional ligera
 
 ## 📦 Requisitos Previos
@@ -190,12 +206,14 @@ El servidor estará disponible en: `http://localhost:5000`
 ### Funcionalidades Disponibles
 
 #### 📊 Dashboard Principal
+
 - Visualiza logs en tiempo real
 - Consulta estadísticas actualizadas
 - Navega entre páginas de logs
 - Analiza alertas con IA
 
 #### 📤 Subir Logs
+
 1. Ve a la sección "Subir Logs" en el menú
 2. Selecciona un archivo JSON con el siguiente formato:
 
@@ -220,6 +238,7 @@ El servidor estará disponible en: `http://localhost:5000`
 4. El sistema procesará los logs y mostrará cuántos fueron añadidos y cuántos duplicados fueron ignorados
 
 #### 🤖 Análisis con IA
+
 1. En el dashboard, busca logs con nivel ERROR o WARN
 2. Haz clic en el botón "🤖 IA" junto al log
 3. Se abrirá un modal con la explicación generada por la IA
@@ -229,23 +248,30 @@ El servidor estará disponible en: `http://localhost:5000`
 
 ## 📁 Estructura del Proyecto
 
-```
 python-siem-analyzer/
 │
-├── app.py                 # Aplicación principal Flask
-├── simulador.py           # Simulador de logs en tiempo real
-├── requirements.txt       # Dependencias del proyecto (crear si no existe)
-├── README.md              # Este archivo
+├── app.py # Aplicación principal Flask
+├── simulador.py # Simulador de logs en tiempo real
+├── debug_api.py # Script para probar endpoints de la API
+├── debug_db.py # Script para inspeccionar la base de datos
+├── requirements.txt # Dependencias del proyecto
+├── README.md # Documentación del proyecto
 │
 ├── instance/
-│   └── users.db          # Base de datos SQLite (se crea automáticamente)
+│ └── users.db # Base de datos SQLite
+│
+├── static/
+│ ├── css/
+│ │ ├── sb-admin-2.min.css # Estilos del tema SB Admin 2
+│ │ └── style.css # Estilos personalizados
+│ └── js/
+│ └── sb-admin-2.min.js # Scripts del tema SB Admin 2
 │
 └── templates/
-    ├── base.html          # Plantilla base con navegación
-    ├── index.html         # Dashboard principal
-    ├── login.html         # Página de inicio de sesión
-    └── upload.html        # Página de carga de archivos
-```
+├── base.html # Plantilla base con navegación
+├── index.html # Dashboard principal
+├── login.html # Página de inicio de sesión
+└── upload.html # Página de carga de archivos
 
 ## 🔌 API Endpoints
 
@@ -262,6 +288,7 @@ python-siem-analyzer/
 ### API REST
 
 - `GET /api/logs?page=1&per_page=10` - Obtener logs paginados
+
   - Parámetros:
     - `page`: Número de página (default: 1)
     - `per_page`: Logs por página (default: 10)
@@ -276,6 +303,7 @@ python-siem-analyzer/
     ```
 
 - `GET /api/stats` - Obtener estadísticas
+
   - Respuesta:
     ```json
     {
@@ -361,16 +389,19 @@ python3 simulador.py
 ### Medidas Implementadas
 
 1. **Autenticación de Usuarios**
+
    - Contraseñas cifradas con hash bcrypt
    - Sesiones gestionadas por Flask-Login
    - Protección de rutas sensibles
 
 2. **Validación de Entrada**
+
    - WTForms para validación de formularios
    - Sanitización de nombres de archivo
    - Validación de formato JSON
 
 3. **Deduplicación**
+
    - Hash SHA-256 para prevenir logs duplicados
    - Índices en base de datos para búsquedas rápidas
 
@@ -394,6 +425,7 @@ python3 simulador.py
 #### 1. Error: "No se pudo contactar al asistente de IA"
 
 **Solución**: Verifica que Ollama esté corriendo:
+
 ```bash
 ollama list
 ollama serve  # Si no está corriendo
@@ -402,6 +434,7 @@ ollama serve  # Si no está corriendo
 #### 2. Error: "Usuario o contraseña incorrectos"
 
 **Solución**: Crea un nuevo usuario o verifica las credenciales:
+
 ```bash
 python3 -c "from app import app, db, User; app.app_context().push(); u = User(username='test'); u.set_password('test123'); db.session.add(u); db.session.commit()"
 ```
@@ -413,6 +446,7 @@ python3 -c "from app import app, db, User; app.app_context().push(); u = User(us
 #### 4. La base de datos no se crea
 
 **Solución**: Crea manualmente la carpeta `instance` y ejecuta:
+
 ```bash
 python3 -c "from app import app, db; app.app_context().push(); db.create_all()"
 ```
@@ -437,12 +471,11 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## 👤 Autor
 
-Desarrollado por **Rafael Pérez** 
+Desarrollado por **Rafael Pérez**
 
-* **LinkedIn:** [https://www.linkedin.com/in/rperezll/]
-* **GitHub:** [https://github.com/leafar1087]
+- **LinkedIn:** [https://www.linkedin.com/in/rperezll/]
+- **GitHub:** [https://github.com/leafar1087]
 
 Desarrollado como proyecto educativo de análisis SIEM con Python y Flask.
 
 **Nota**: Este es un proyecto educativo. Para uso en producción, implementa medidas de seguridad adicionales y realiza auditorías de seguridad.
-

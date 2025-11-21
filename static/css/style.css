@@ -1,0 +1,19 @@
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f8f9fc; /* SB Admin 2 bg */
+}
+::-webkit-scrollbar-thumb {
+  background: #4e73df; /* SB Admin 2 primary */
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #224abe;
+}
+
+/* Flash Messages - Adapted */
+.alert {
+  border-left: 4px solid;
+}

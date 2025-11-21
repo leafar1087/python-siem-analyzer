@@ -247,18 +247,38 @@ def get_logs():
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
+        print(f"[DEBUG] /api/logs called. Page: {page}, PerPage: {per_page}") # DEBUG
     except ValueError:
         return jsonify({"error": "Parámetros 'page' y 'per_page' deben ser números."}), 400
 
     # --- ¡LÓGICA DE LECTURA ACTUALIZADA! ---
     # Ya no leemos de 'logs.json', ¡consultamos la BD!
     
-    # 1. Obtenemos el objeto de paginación de SQLAlchemy
-    # 'Log.query' es la base de nuestra consulta.
+    # 1. Obtenemos el término de búsqueda
+    search_query = request.args.get('search', '', type=str)
+
+    # 2. Construimos la consulta base
+    query = Log.query
+
+    # 3. Aplicamos filtro si hay búsqueda
+    if search_query:
+        search_term = f"%{search_query}%"
+        # Filtramos por IP, Mensaje, Severidad o Timestamp
+        # Usamos 'ilike' para búsqueda insensible a mayúsculas/minúsculas
+        query = query.filter(
+            db.or_(
+                Log.ip.ilike(search_term),
+                Log.mensaje.ilike(search_term),
+                Log.severidad.ilike(search_term),
+                Log.timestamp.ilike(search_term)
+            )
+        )
+
+    # 4. Obtenemos el objeto de paginación de SQLAlchemy
     # '.order_by(Log.timestamp.desc())' muestra los logs más nuevos primero.
     # '.paginate()' es la magia que maneja todo por nosotros.
     try:
-        paginacion = Log.query.order_by(Log.timestamp.desc()).paginate(
+        paginacion = query.order_by(Log.timestamp.desc()).paginate(
             page=page, 
             per_page=per_page, 
             error_out=False # No da error 404 si la página está vacía
@@ -275,6 +295,7 @@ def get_logs():
     logs_como_diccionarios = [log.to_dict() for log in logs_para_esta_pagina]
     
     # 4. Devolvemos el JSON con la info de paginación del objeto
+    print(f"[DEBUG] Found {len(logs_como_diccionarios)} logs for this page. Total: {paginacion.total}") # DEBUG
     return jsonify({
         'logs': logs_como_diccionarios,
         'current_page': paginacion.page,

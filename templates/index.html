@@ -4,277 +4,378 @@
 
 {% block content %}
 
-    <div class="dashboard-grid">
-
-        <div id="stats-container">
-            <h2>Estadísticas Clave</h2>
-            
-            <div class="stats-content"> 
-                <div class="chart-container">
-                    <h3>Conteo por Nivel</h3>
-                    <canvas id="chartNivel"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h3>Top IPs Activas</h3>
-                    <canvas id="chartIPs"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div id="log-container">
-            <h2>Logs en Vivo</h2>
-            
-            <table width="100%">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>IP de Origen</th>
-                        <th>Severidad</th>
-                        <th>Mensaje</th>
-                        <th>Analizar</th>
-                    </tr>
-                </thead>
-                <tbody id="log-table-body">
-                    <tr><td colspan="4">Cargando datos desde la API...</td></tr>
-                </tbody>
-            </table>
-
-            <div id="pagination-controls" style="margin-top: 15px; text-align: center;">
-                <button id="btn-anterior" onclick="cambiarPagina('anterior')">&laquo; Anterior</button>
-                <span id="page-info" style="margin: 0 15px;">Página ? de ?</span>
-                <button id="btn-siguiente" onclick="cambiarPagina('siguiente')">Siguiente &raquo;</button>
-            </div>
-        </div>
-
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <a href="#" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" onclick="cargarLogs(currentPage); cargarStats();">
+            <i class="fas fa-sync-alt fa-sm text-white-50"></i> Actualizar Ahora
+        </a>
     </div>
 
-    </div> <div id="ai-modal" class="modal-oculto">
-        <div class="modal-contenido">
-            <span class_ ="modal-cerrar" onclick="cerrarModal()">&times;</span>
-            <h2>🤖 Asistente de Análisis de IA</h2>
-            <p><strong>Analizando Log:</strong> <em id="ai-log-mensaje"></em></p>
-            <hr>
-            <div id="ai-respuesta">
-                <p>Consultando al modelo local (phi3:mini)...</p>
+    <div class="row">
+
+        <!-- Columna Izquierda: Estadísticas -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <!-- Card Header - Dropdown -->
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Estadísticas Clave</h6>
+                </div>
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="chartNivel"></canvas>
+                    </div>
+                    <div class="mt-4 text-center small">
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-danger"></i> ERROR
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-success"></i> INFO
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-warning"></i> WARN
+                        </span>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="chart-bar">
+                        <canvas id="chartIPs"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Logs -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Logs en Vivo <small id="last-updated" class="text-muted ml-2"></small></h6>
+                    
+                    <div class="d-flex align-items-center">
+                        <select id="per-page-select" class="form-control form-control-sm mr-2" style="width: auto;" onchange="cambiarTamanoPagina()">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Buscar..." onkeyup="debounceSearch()">
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>IP</th>
+                                    <th>Severidad</th>
+                                    <th>Mensaje</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-table-body">
+                                <tr><td colspan="5" class="text-center">Cargando datos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="btn-group">
+                            <button id="btn-primero" class="btn btn-sm btn-secondary" onclick="cambiarPagina('primero')"><i class="fas fa-angle-double-left"></i></button>
+                            <button id="btn-anterior" class="btn btn-sm btn-secondary" onclick="cambiarPagina('anterior')"><i class="fas fa-angle-left"></i></button>
+                        </div>
+                        <span id="page-info" class="small">Página ? de ?</span>
+                        <div class="btn-group">
+                            <button id="btn-siguiente" class="btn btn-sm btn-secondary" onclick="cambiarPagina('siguiente')"><i class="fas fa-angle-right"></i></button>
+                            <button id="btn-ultimo" class="btn btn-sm btn-secondary" onclick="cambiarPagina('ultimo')"><i class="fas fa-angle-double-right"></i></button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Modal de IA (Bootstrap 4 compatible) -->
+    <div class="modal fade" id="aiModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-gradient-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-robot mr-2"></i>Asistente de Análisis IA</h5>
+                    <button class="close text-white" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">Analizando Log:</p>
+                    <div class="alert alert-secondary font-monospace small mb-3 text-dark" id="ai-log-mensaje"></div>
+                    <hr>
+                    <div id="ai-respuesta">
+                        <div class="d-flex align-items-center text-info">
+                            <div class="spinner-border spinner-border-sm mr-2" role="status"></div>
+                            Consultando al modelo local (phi3:mini)...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 {% endblock %}
 
-
-
 {% block scripts %}
 <script>
-    // --- VARIABLES GLOBALES PARA ESTADO ---
+    // Variables Globales
     let currentPage = 1;
-    const logsPorPagina = 10;
+    let totalPages = 1;
+    let logsPorPagina = 10;
+    let searchTimeout = null;
+    
+    // Variables para los gráficos (Chart.js)
+    let chartNivelInstance = null;
+    let chartIPsInstance = null;
 
-    // --- Variables globales para los gráficos (¡IMPORTANTE!) ---
-    // Las guardamos aquí para poder "destruirlas" antes de volver a dibujarlas
-    let chartNivelInstance;
-    let chartIPsInstance;
-
-    // Este script se ejecuta cuando el navegador termina de cargar la página
-    document.addEventListener('DOMContentLoaded', () => {
-        cargarLogs(currentPage); 
+    // Inicialización al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
         cargarStats();
+        cargarLogs(currentPage);
 
-        setInterval(() =>{
-            console.log("Actualizando dashboard en vivo...");
-            cargarLogs(currentPage);
-            cargarStats();
+        // Auto-refresh cada 5 segundos
+        setInterval(() => {
+            // Solo actualizamos si no estamos buscando o editando
+            const searchTerm = document.getElementById('search-input').value;
+            if (!searchTerm) {
+                cargarStats();
+                cargarLogs(currentPage);
+            }
         }, 5000);
     });
 
-    // --- FUNCIÓN 'cambiarPagina' (Sin cambios) ---
-    function cambiarPagina(direccion) {
-        if (direccion === 'siguiente') {
-            currentPage++;
-        } else if (direccion === 'anterior') {
-            currentPage--;
-        }
-        cargarLogs(currentPage);
+    // --- FUNCIONES DE CARGA DE DATOS ---
+
+    function cargarStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(stats => {
+                if (stats.error) return;
+
+                try {
+                    // 1. Gráfico de Tarta (Nivel)
+                    const ctxNivel = document.getElementById('chartNivel');
+                    if (ctxNivel) {
+                        if (chartNivelInstance) chartNivelInstance.destroy();
+                        chartNivelInstance = new Chart(ctxNivel.getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: Object.keys(stats.conteo_por_nivel),
+                                datasets: [{
+                                    data: Object.values(stats.conteo_por_nivel),
+                                    backgroundColor: ['#e74a3b', '#1cc88a', '#f6c23e'],
+                                    hoverBackgroundColor: ['#e02d1b', '#17a673', '#dda20a'],
+                                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                tooltips: {
+                                    backgroundColor: "rgb(255,255,255)",
+                                    bodyFontColor: "#858796",
+                                    borderColor: '#dddfeb',
+                                    borderWidth: 1,
+                                    xPadding: 15,
+                                    yPadding: 15,
+                                    displayColors: false,
+                                    caretPadding: 10,
+                                },
+                                legend: { display: false },
+                                cutoutPercentage: 80,
+                            }
+                        });
+                    }
+
+                    // 2. Gráfico de Barras (IPs)
+                    const ctxIPs = document.getElementById('chartIPs');
+                    if (ctxIPs) {
+                        if (chartIPsInstance) chartIPsInstance.destroy();
+                        chartIPsInstance = new Chart(ctxIPs.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: Object.keys(stats.top_5_ips),
+                                datasets: [{
+                                    label: 'Eventos',
+                                    data: Object.values(stats.top_5_ips),
+                                    backgroundColor: "#4e73df",
+                                    hoverBackgroundColor: "#2e59d9",
+                                    borderColor: "#4e73df",
+                                }]
+                            },
+                            options: {
+                                maintainAspectRatio: false,
+                                layout: { padding: { left: 10, right: 25, top: 25, bottom: 0 } },
+                                scales: {
+                                    xAxes: [{
+                                        gridLines: { display: false, drawBorder: false },
+                                        ticks: { maxTicksLimit: 6 },
+                                        maxBarThickness: 25,
+                                    }],
+                                    yAxes: [{
+                                        ticks: { min: 0, maxTicksLimit: 5, padding: 10 },
+                                        gridLines: { color: "rgb(234, 236, 244)", zeroLineColor: "rgb(234, 236, 244)", drawBorder: false, borderDash: [2], zeroLineBorderDash: [2] }
+                                    }],
+                                },
+                                legend: { display: false },
+                                tooltips: {
+                                    backgroundColor: "rgb(255,255,255)",
+                                    bodyFontColor: "#858796",
+                                    titleMarginBottom: 10,
+                                    titleFontColor: '#6e707e',
+                                    titleFontSize: 14,
+                                    borderColor: '#dddfeb',
+                                    borderWidth: 1,
+                                    xPadding: 15,
+                                    yPadding: 15,
+                                    displayColors: false,
+                                    intersect: false,
+                                    mode: 'index',
+                                    caretPadding: 10,
+                                }
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error al inicializar gráficos:", err);
+                }
+            })
+            .catch(e => console.error("Error en cargarStats:", e));
     }
 
-    // --- FUNCIÓN 'cargarLogs' (Sin cambios) ---
     function cargarLogs(page) {
         const tableBody = document.getElementById('log-table-body');
-        fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}`)
+        const searchTerm = document.getElementById('search-input').value;
+        const updateIndicator = document.getElementById('last-updated');
+
+        if (updateIndicator) updateIndicator.textContent = 'Actualizando...';
+
+        fetch(`/api/logs?page=${page}&per_page=${logsPorPagina}&search=${encodeURIComponent(searchTerm)}`)
             .then(response => response.json())
             .then(data => {
                 tableBody.innerHTML = ''; 
+                if(data.logs.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No hay logs disponibles.</td></tr>';
+                    document.getElementById('page-info').textContent = `Página 0 de 0`;
+                    return;
+                }
+
                 data.logs.forEach(log => {
+                    // Defensive checks
+                    const safeMensaje = log.mensaje || "";
+                    const safeSeveridad = log.severidad || "INFO";
+                    const safeNivel = log.nivel || "INFO";
+                    const safeIP = log.ip || "Unknown";
+                    const safeTimestamp = log.timestamp || "";
+
                     const row = document.createElement('tr');
-                    if (log.severidad.includes('ALERTA')) {
-                        row.style.color = '#ff6b6b'; 
-                    } else if (log.severidad === 'AVISO') {
-                        row.style.color = '#ffb86c';
-                    }
+                    
+                    let badgeClass = 'badge-secondary';
+                    if (safeSeveridad.includes('ALERTA') || safeNivel === 'ERROR') badgeClass = 'badge-danger';
+                    else if (safeSeveridad === 'AVISO' || safeNivel === 'WARN') badgeClass = 'badge-warning text-dark';
+                    else badgeClass = 'badge-success';
+
                     row.innerHTML = `
-                        <td>${log.timestamp}</td>
-                        <td>${log.ip}</td>
-                        <td>${log.severidad}</td>
-                        <td>${log.mensaje}</td>
-                        <td>
-                            ${log.severidad.includes('ALERTA') || log.severidad.includes('AVISO') ? 
-                                `<button class="btn-ia" onclick="analizarLogIA('${log.mensaje}')">🤖 IA</button>` :
-                                ''}
+                        <td class="text-nowrap small">${safeTimestamp}</td>
+                        <td class="text-monospace small">${safeIP}</td>
+                        <td><span class="badge ${badgeClass}">${safeSeveridad}</span></td>
+                        <td class="text-break small">${safeMensaje.substring(0, 80)}${safeMensaje.length > 80 ? '...' : ''}</td>
+                        <td class="text-center">
+                            ${(safeSeveridad.includes('ALERTA') || safeSeveridad.includes('AVISO') || safeNivel === 'ERROR') ? 
+                                `<button class="btn btn-sm btn-info btn-circle" onclick="analizarLogIA('${safeMensaje.replace(/'/g, "\\'")}')" title="Analizar con IA">
+                                    <i class="fas fa-robot"></i>
+                                </button>` : ''}
                         </td>
                     `;
                     tableBody.appendChild(row);
                 });
 
-                const pageInfo = document.getElementById('page-info');
-                pageInfo.textContent = `Página ${data.current_page} de ${data.total_pages}`;
                 currentPage = data.current_page;
+                totalPages = data.total_pages;
+                
+                document.getElementById('page-info').textContent = `Página ${data.current_page} de ${data.total_pages}`;
+                
+                if (updateIndicator) {
+                    const now = new Date();
+                    updateIndicator.textContent = 'Actualizado: ' + now.toLocaleTimeString();
+                }
+                
+                document.getElementById('btn-primero').disabled = (data.current_page === 1);
                 document.getElementById('btn-anterior').disabled = (data.current_page === 1);
                 document.getElementById('btn-siguiente').disabled = (data.current_page === data.total_pages);
+                document.getElementById('btn-ultimo').disabled = (data.current_page === data.total_pages);
             })
             .catch(error => {
-                console.error('Error al cargar los logs:', error);
-                tableBody.innerHTML = '<tr><td colspan="4">Error al cargar datos de la API.</td></tr>';
+                console.error('Error:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar datos: ' + error.message + '</td></tr>';
             });
     }
 
-    // --- ¡¡FUNCIÓN 'cargarStats' TOTALMENTE REESCRITA!! ---
-    function cargarStats() {
-        const statsContent = document.getElementById('stats-content');
+    // --- FUNCIONES DE INTERACCIÓN ---
 
-        fetch('/api/stats')
-            .then(response => response.json())
-            .then(stats => {
-                if (stats.error) {
-                    console.error('Error recibido desde la API /api/stats:', stats.error);
-                    statsContent.innerHTML = `<p style="color: #ff6b6b;">Error de servidor al generar estadísticas.</p>`;
-                    return; 
-                }
-
-                // ¡Aquí dibujamos los gráficos!
-
-                // --- 1. Gráfico de Tarta (Niveles) ---
-                const ctxNivel = document.getElementById('chartNivel').getContext('2d');
-
-                // Destruimos el gráfico anterior si existe (para evitar bugs al refrescar)
-                if (chartNivelInstance) {
-                    chartNivelInstance.destroy();
-                }
-
-                chartNivelInstance = new Chart(ctxNivel, {
-                    type: 'pie',
-                    data: {
-                        labels: Object.keys(stats.conteo_por_nivel),
-                        datasets: [{
-                            label: 'Conteo por Nivel',
-                            data: Object.values(stats.conteo_por_nivel),
-                            backgroundColor: [
-                                'rgba(255, 107, 107, 0.7)', // Rojo (ERROR)
-                                'rgba(110, 219, 110, 0.7)', // Verde (INFO)
-                                'rgba(255, 184, 108, 0.7)'  // Naranja (WARN)
-                            ],
-                            borderColor: '#1e1e1e',
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { labels: { color: '#e0e0e0' } } }
-                    }
-                });
-
-                // --- 2. Gráfico de Barras (Top IPs) ---
-                const ctxIPs = document.getElementById('chartIPs').getContext('2d');
-
-                if (chartIPsInstance) {
-                    chartIPsInstance.destroy();
-                }
-
-                chartIPsInstance = new Chart(ctxIPs, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(stats.top_5_ips),
-                        datasets: [{
-                            label: 'Eventos por IP',
-                            data: Object.values(stats.top_5_ips),
-                            backgroundColor: 'rgba(76, 175, 80, 0.7)', // Verde SIEM
-                            borderColor: 'rgba(76, 175, 80, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { 
-                                beginAtZero: true,
-                                ticks: { color: '#e0e0e0', stepSize: 1 },
-                                grid: { color: '#444' }
-                            },
-                            x: {
-                                ticks: { color: '#e0e0e0' },
-                                grid: { color: '#444' }
-                            }
-                        }
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Error de red al cargar las estadísticas:', error);
-                statsContent.innerHTML = '<p style="color: #ff6b6b;">Error de red al cargar estadísticas.</p>';
-            });
+    function cambiarPagina(accion) {
+        if (accion === 'primero') currentPage = 1;
+        else if (accion === 'anterior' && currentPage > 1) currentPage--;
+        else if (accion === 'siguiente' && currentPage < totalPages) currentPage++;
+        else if (accion === 'ultimo') currentPage = totalPages;
+        
+        cargarLogs(currentPage);
     }
 
-    // ... (Tu función cargarStats() termina aquí) ...
+    function cambiarTamanoPagina() {
+        logsPorPagina = document.getElementById('per-page-select').value;
+        currentPage = 1; // Reset to first page
+        cargarLogs(currentPage);
+    }
 
-        // --- ¡NUEVAS FUNCIONES DE IA (MÓDULO 5)! ---
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            cargarLogs(currentPage);
+        }, 300);
+    }
 
-        function abrirModal() {
-            document.getElementById('ai-modal').style.display = 'block';
-        }
+    function analizarLogIA(mensajeLog) {
+        document.getElementById('ai-log-mensaje').textContent = mensajeLog;
+        document.getElementById('ai-respuesta').innerHTML = `
+            <div class="d-flex align-items-center text-info">
+                <div class="spinner-border spinner-border-sm mr-2" role="status"></div>
+                Consultando al modelo local (phi3:mini)...
+            </div>
+        `;
+       
+       $('#aiModal').modal('show');
 
-        function cerrarModal() {
-            document.getElementById('ai-modal').style.display = 'none';
-        }
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        function analizarLogIA(mensajeLog) {
-            // 1. Abrimos el modal y mostramos un estado de "cargando"
-            abrirModal();
-            document.getElementById('ai-log-mensaje').textContent = mensajeLog;
-            document.getElementById('ai-respuesta').innerHTML = "<p>Consultando al modelo (phi3:mini)...</p>";
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-            // 2. Llamamos a nuestra nueva API de IA (¡con POST!)
-            fetch('/api/explain', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                // 3. Enviamos el mensaje del log en el body
-                body: JSON.stringify({ 
-                    mensaje: mensajeLog 
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    // Si el servidor da un error (ej. 500), lo manejamos
-                    return response.json().then(err => Promise.reject(err));
-                }
-                return response.json();
-            })
-            .then(data => {
-                // 4. ¡Éxito! Mostramos la explicación de la IA
-                // (Usamos <pre> para preservar los saltos de línea que dé la IA)
-                document.getElementById('ai-respuesta').innerHTML = `<pre>${data.explicacion}</pre>`;
-            })
-            .catch(error => {
-                // 5. Manejamos cualquier error (de red o del servidor)
-                console.error('Error al analizar con IA:', error);
-                document.getElementById('ai-respuesta').innerHTML = `<p style="color: #ff6b6b;">Error: ${error.error || 'No se pudo contactar a la IA.'}</p>`;
-            });
-        }
- 
+        fetch('/api/explain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ mensaje: mensajeLog })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.error) throw new Error(data.error);
+            document.getElementById('ai-respuesta').innerHTML = `
+                <div class="p-3 bg-gray-200 rounded border border-secondary">
+                    <pre class="mb-0 text-dark" style="white-space: pre-wrap; font-family: 'Consolas', monospace;">${data.explicacion}</pre>
+                </div>
+            `;
+        })
+        .catch(err => {
+            document.getElementById('ai-respuesta').innerHTML = `<div class="alert alert-danger mb-0">${err.message || 'Error desconocido'}</div>`;
+        });
+    }
 </script>
 {% endblock %}
