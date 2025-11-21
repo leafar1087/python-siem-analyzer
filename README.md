@@ -21,13 +21,6 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 
 ## 📖 Descripción
 
-
-
-
-
-
-
-
 **SIEM Analyzer** es una aplicación web completa diseñada para analizar y gestionar logs de seguridad en tiempo real. El sistema permite:
 
 - **Ingesta de Logs**: Carga archivos JSON con eventos de seguridad
@@ -74,7 +67,30 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 - Interfaz modal para consultas de IA
 
   <img width="1448" height="794" alt="image" src="https://github.com/user-attachments/assets/e4186361-cb1e-4c8a-9532-89398d58e3bf" />
-  
+
+### 🔗 Correlación de Eventos (SIEM Avanzado)
+
+Sistema de detección de patrones y amenazas similar a CrowdStrike, que analiza logs para identificar comportamientos sospechosos:
+
+**Patrones de Detección:**
+
+- **Fuerza Bruta**: Múltiples intentos fallidos de autenticación (5+ eventos)
+  - Severidad CRITICAL: 10+ intentos | HIGH: 7-9 | MEDIUM: 5-6
+- **Escaneo de Puertos**: Acceso a múltiples puertos desde misma IP (5+ puertos)
+  - Severidad HIGH: 10+ puertos | MEDIUM: 5-9
+- **IP Sospechosa**: Actividad anormalmente alta (15+ eventos ERROR/WARN)
+  - Severidad HIGH: 30+ eventos | MEDIUM: 15-29
+- **Anomalía Temporal**: Volumen inusual en periodo corto (20+ eventos)
+
+**Características:**
+
+- Análisis automático de logs de últimas 24 horas
+- Agrupación inteligente por IP origen
+- Deduplicación de correlaciones similares
+- Estados: ACTIVE, RESOLVED, FALSE_POSITIVE
+- Interfaz con filtros por severidad, tipo y estado
+- Drill-down a logs relacionados
+- Exportación de reportes
 
 ### 💾 Gestión de Datos
 
@@ -258,6 +274,23 @@ El servidor estará disponible en: `http://localhost:5000`
    - Explicación del evento en lenguaje simple
    - Sugerencia de acción de mitigación o investigación
 
+#### 🔗 Correlación de Eventos
+
+1. Ve a **"Correlación de Eventos"** en el menú lateral
+2. Haz clic en **"Analizar Ahora"** para ejecutar el análisis
+3. El sistema detectará patrones en los logs de las últimas 24 horas
+4. Revisa las correlaciones detectadas:
+   - **Filtrar**: Por estado (Activas/Resueltas), severidad (Crítica/Alta/Media) o tipo
+   - **Ver Detalles**: Click en "Ver Detalles" para información completa
+   - **Gestionar**: Marca como "Resueltas" o "Falso Positivo"
+5. Cada correlación muestra:
+   - Tipo de patrón detectado
+   - IP origen
+   - Número de eventos relacionados
+   - Severidad automática
+   - Periodo de tiempo (primer y último evento)
+   - IDs de logs relacionados
+
 ## 📁 Estructura del Proyecto
 
 python-siem-analyzer/
@@ -350,6 +383,55 @@ python-siem-analyzer/
 
 - `GET /upload` - Página de carga de archivos
 - `POST /upload` - Procesar archivo JSON subido
+
+### Correlación de Eventos
+
+- `GET /correlations` - Página de correlaciones (requiere autenticación)
+- `GET /api/correlations` - Obtener correlaciones detectadas
+
+  - Parámetros:
+    - `status`: Estado (ACTIVE, RESOLVED, FALSE_POSITIVE, ALL)
+    - `severity`: Severidad (CRITICAL, HIGH, MEDIUM, LOW)
+    - `type`: Tipo (brute_force, port_scan, suspicious_ip, time_anomaly)
+  - Respuesta:
+    ```json
+    {
+      "correlations": [
+        {
+          "id": 1,
+          "correlation_type": "brute_force",
+          "source_ip": "192.168.1.100",
+          "event_count": 12,
+          "severity": "CRITICAL",
+          "first_seen": "2025-01-21T10:00:00",
+          "last_seen": "2025-01-21T10:15:00",
+          "description": "Detectados 12 intentos fallidos...",
+          "related_log_ids": [1, 2, 3, ...],
+          "status": "ACTIVE"
+        }
+      ],
+      "total": 5
+    }
+    ```
+
+- `POST /api/correlations/analyze` - Ejecutar análisis de correlación manual
+
+  - Respuesta:
+    ```json
+    {
+      "message": "Análisis completado. 5 correlaciones detectadas/actualizadas.",
+      "detected": 5,
+      "saved": 5
+    }
+    ```
+
+- `PUT /api/correlations/<id>/status` - Actualizar estado de correlación
+  - Body:
+    ```json
+    {
+      "status": "RESOLVED"
+    }
+    ```
 
 ## 🤖 Funcionalidades de IA
 

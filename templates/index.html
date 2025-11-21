@@ -12,6 +12,48 @@
         </a>
     </div>
 
+    <!-- Correlation Alerts Widget -->
+    <div id="correlation-alerts-widget" class="mb-4" style="display: none;">
+        <div class="card border-left-danger shadow">
+            <div class="card-header py-3 bg-gradient-danger">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h6 class="m-0 font-weight-bold text-white">
+                            <i class="fas fa-exclamation-triangle"></i> ALERTAS DE CORRELACIÓN
+                        </h6>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge badge-light" id="corr-total-badge">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3 text-center">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Críticas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="corr-critical">0</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Altas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="corr-high">0</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Medias</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="corr-medium">0</div>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <a href="{{ url_for('correlations') }}" class="btn btn-primary btn-sm btn-block">
+                            Ver Todas <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                <div id="top-correlations-list">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
 
         <!-- Columna Izquierda: Estadísticas -->
@@ -143,6 +185,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         cargarStats();
         cargarLogs(currentPage);
+        cargarCorrelaciones();
 
         // Auto-refresh cada 5 segundos
         setInterval(() => {
@@ -151,6 +194,7 @@
             if (!searchTerm) {
                 cargarStats();
                 cargarLogs(currentPage);
+                cargarCorrelaciones();
             }
         }, 5000);
     });
@@ -376,6 +420,58 @@
         .catch(err => {
             document.getElementById('ai-respuesta').innerHTML = `<div class="alert alert-danger mb-0">${err.message || 'Error desconocido'}</div>`;
         });
+    }
+
+    // ==================== CORRELACIÓN DE EVENTOS ====================
+    
+    function cargarCorrelaciones() {
+        fetch('/api/correlations/summary')
+            .then(response => response.json())
+            .then(data => {
+                const widget = document.getElementById('correlation-alerts-widget');
+                
+                if (data.total_active > 0) {
+                    widget.style.display = 'block';
+                    document.getElementById('corr-total-badge').textContent = data.total_active;
+                    document.getElementById('corr-critical').textContent = data.severity_counts.CRITICAL || 0;
+                    document.getElementById('corr-high').textContent = data.severity_counts.HIGH || 0;
+                    document.getElementById('corr-medium').textContent = data.severity_counts.MEDIUM || 0;
+                    
+                    const cardHeader = widget.querySelector('.card-header');
+                    if (data.has_critical) {
+                        cardHeader.classList.remove('bg-gradient-warning');
+                        cardHeader.classList.add('bg-gradient-danger');
+                    }
+                    
+                    renderTopCorrelations(data.top_correlations);
+                } else {
+                    widget.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error cargando correlaciones:', error));
+    }
+    
+    function renderTopCorrelations(correlations) {
+        const container = document.getElementById('top-correlations-list');
+        if (correlations.length === 0) { container.innerHTML = ''; return; }
+        
+        let html = '<div class="list-group">';
+        correlations.forEach(corr => {
+            const severityBadge = {'CRITICAL':'<span class="badge badge-danger ml-2">CRÍTICA</span>','HIGH':'<span class="badge badge-warning ml-2">ALTA</span>','MEDIUM':'<span class="badge badge-info ml-2">MEDIA</span>'}[corr.severity] || '';
+            const typeIcon = {'brute_force':'fas fa-user-lock','port_scan':'fas fa-network-wired','suspicious_ip':'fas fa-exclamation-triangle','time_anomaly':'fas fa-clock'}[corr.correlation_type] || 'fas fa-question-circle';
+            const typeName = {'brute_force':'Fuerza Bruta','port_scan':'Escaneo de Puertos','suspicious_ip':'IP Sospechosa','time_anomaly':'Anomalía Temporal'}[corr.correlation_type] || corr.correlation_type;
+            
+            html += `<a href="{{ url_for('correlations') }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h6 class="mb-1"><i class="${typeIcon}"></i> ${typeName} ${severityBadge}</h6>
+                    <small class="text-muted">${corr.event_count} eventos</small>
+                </div>
+                <p class="mb-1 small">${corr.description}</p>
+                <small class="text-muted">IP: <code>${corr.source_ip}</code></small>
+            </a>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
     }
 </script>
 {% endblock %}

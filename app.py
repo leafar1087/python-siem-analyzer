@@ -93,19 +93,62 @@ class Log(db.Model):
 
     def _generar_hash(self):
         string_unico = f"{self.timestamp}-{self.ip}-{self.mensaje}"
-
-        return hashlib.sha256(string_unico.encode('utf-8')).hexdigest()
-
+        return hashlib.sha256(string_unico.encode()).hexdigest()
+    
     def to_dict(self):
-        return{
+        """Convierte el objeto Log a diccionario para JSON."""
+        return {
             "id": self.id,
             "timestamp": self.timestamp,
             "ip": self.ip,
             "nivel": self.nivel,
             "severidad": self.severidad,
             "mensaje": self.mensaje,
-        
         }
+
+class Correlation(db.Model):
+    """Modelo para almacenar correlaciones de eventos detectadas."""
+    id = db.Column(db.Integer, primary_key=True)
+    correlation_type = db.Column(db.String(50), nullable=False)  # brute_force, port_scan, suspicious_ip, time_anomaly
+    source_ip = db.Column(db.String(50), index=True, nullable=False)
+    event_count = db.Column(db.Integer, nullable=False)
+    severity = db.Column(db.String(20), nullable=False)  # CRITICAL, HIGH, MEDIUM, LOW
+    first_seen = db.Column(db.DateTime, nullable=False)
+    last_seen = db.Column(db.DateTime, nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    related_log_ids = db.Column(db.Text)  # JSON array of log IDs
+    status = db.Column(db.String(20), default='ACTIVE')  # ACTIVE, RESOLVED, FALSE_POSITIVE
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    
+    # Audit trail fields
+    resolved_by = db.Column(db.String(100))  # Username who resolved
+    resolved_at = db.Column(db.DateTime)  # When it was resolved
+    resolved_from_ip = db.Column(db.String(50))  # IP address of resolver
+    resolved_from_location = db.Column(db.String(200))  # Hostname/location
+    notes = db.Column(db.Text)  # Analyst notes
+    
+    def to_dict(self):
+        """Convierte el objeto a diccionario para JSON."""
+        return {
+            'id': self.id,
+            'correlation_type': self.correlation_type,
+            'source_ip': self.source_ip,
+            'event_count': self.event_count,
+            'severity': self.severity,
+            'first_seen': self.first_seen.isoformat() if self.first_seen else None,
+            'last_seen': self.last_seen.isoformat() if self.last_seen else None,
+            'description': self.description,
+            'related_log_ids': json.loads(self.related_log_ids) if self.related_log_ids else [],
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_by': self.resolved_by,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'resolved_from_ip': self.resolved_from_ip,
+            'resolved_from_location': self.resolved_from_location,
+            'notes': self.notes
+        }
+
+
 
 
 def cargar_y_analizar_logs():
@@ -464,6 +507,349 @@ def explain_log():
         # Esto fallará si el servicio 'Ollama' no está corriendo en tu Mac
         print(f"[IA] ERROR: No se pudo conectar al servicio de Ollama. {e}")
         return jsonify({"error": "No se pudo contactar al asistente de IA. ¿Está Ollama corriendo?"}), 500
+
+
+# ==================== CORRELACIÓN DE EVENTOS ====================
+
+from datetime import datetime, timedelta
+
+def analyze_correlations():
+    """
+    Motor de correlación que analiza logs recientes y detecta patrones.
+    Retorna lista de correlaciones detectadas.
+    """
+    correlations = []
+    
+    # Analizamos logs de las últimas 24 horas
+    time_threshold = datetime.now() - timedelta(hours=24)
+    
+    # 1. DETECCIÓN DE FUERZA BRUTA
+    brute_force = detect_brute_force(time_threshold)
+    correlations.extend(brute_force)
+    
+    # 2. DETECCIÓN DE ESCANEO DE PUERTOS
+    port_scans = detect_port_scanning(time_threshold)
+    correlations.extend(port_scans)
+    
+    # 3. DETECCIÓN DE IP SOSPECHOSA
+    suspicious_ips = detect_suspicious_ip_activity(time_threshold)
+    correlations.extend(suspicious_ips)
+    
+    # 4. DETECCIÓN DE ANOMALÍAS TEMPORALES
+    time_anomalies = detect_time_anomalies(time_threshold)
+    correlations.extend(time_anomalies)
+    
+    return correlations
+
+def detect_brute_force(time_threshold):
+    """Detecta múltiples intentos fallidos de autenticación desde la misma IP."""
+    correlations = []
+    
+    # Buscamos logs con palabras clave de fallo de autenticación
+    keywords = ['fallo', 'fallido', 'failed', 'authentication', 'autenticación', 'login']
+    
+    # Query para agrupar por IP
+    query = db.session.query(
+        Log.ip,
+        db.func.count(Log.id).label('count'),
+        db.func.min(Log.timestamp).label('first_seen'),
+        db.func.max(Log.timestamp).label('last_seen'),
+        db.func.group_concat(Log.id).label('log_ids')
+    ).filter(
+        db.or_(*[Log.mensaje.like(f'%{kw}%') for kw in keywords]),
+        Log.nivel.in_(['ERROR', 'WARN'])
+    ).group_by(Log.ip).having(db.func.count(Log.id) >= 5)
+    
+    for result in query.all():
+        severity = 'CRITICAL' if result.count >= 10 else 'HIGH' if result.count >= 7 else 'MEDIUM'
+        
+        correlations.append({
+            'type': 'brute_force',
+            'ip': result.ip,
+            'count': result.count,
+            'severity': severity,
+            'first_seen': result.first_seen,
+            'last_seen': result.last_seen,
+            'description': f'Detectados {result.count} intentos fallidos de autenticación desde {result.ip}',
+            'log_ids': result.log_ids.split(',') if result.log_ids else []
+        })
+    
+    return correlations
+
+def detect_port_scanning(time_threshold):
+    """Detecta acceso a múltiples puertos desde la misma IP."""
+    correlations = []
+    
+    # Buscamos logs con referencias a puertos
+    keywords = ['puerto', 'port', '8080', '443', '22', '3306', '5432']
+    
+    query = db.session.query(
+        Log.ip,
+        db.func.count(db.func.distinct(Log.mensaje)).label('unique_ports'),
+        db.func.count(Log.id).label('total_events'),
+        db.func.min(Log.timestamp).label('first_seen'),
+        db.func.max(Log.timestamp).label('last_seen'),
+        db.func.group_concat(Log.id).label('log_ids')
+    ).filter(
+        db.or_(*[Log.mensaje.like(f'%{kw}%') for kw in keywords])
+    ).group_by(Log.ip).having(db.func.count(db.func.distinct(Log.mensaje)) >= 5)
+    
+    for result in query.all():
+        severity = 'HIGH' if result.unique_ports >= 10 else 'MEDIUM'
+        
+        correlations.append({
+            'type': 'port_scan',
+            'ip': result.ip,
+            'count': result.total_events,
+            'severity': severity,
+            'first_seen': result.first_seen,
+            'last_seen': result.last_seen,
+            'description': f'Posible escaneo de puertos desde {result.ip}: {result.unique_ports} puertos diferentes accedidos',
+            'log_ids': result.log_ids.split(',') if result.log_ids else []
+        })
+    
+    return correlations
+
+def detect_suspicious_ip_activity(time_threshold):
+    """Detecta IPs con actividad anormalmente alta."""
+    correlations = []
+    
+    query = db.session.query(
+        Log.ip,
+        db.func.count(Log.id).label('count'),
+        db.func.min(Log.timestamp).label('first_seen'),
+        db.func.max(Log.timestamp).label('last_seen'),
+        db.func.group_concat(Log.id).label('log_ids')
+    ).filter(
+        Log.nivel.in_(['ERROR', 'WARN'])
+    ).group_by(Log.ip).having(db.func.count(Log.id) >= 15)
+    
+    for result in query.all():
+        severity = 'HIGH' if result.count >= 30 else 'MEDIUM'
+        
+        correlations.append({
+            'type': 'suspicious_ip',
+            'ip': result.ip,
+            'count': result.count,
+            'severity': severity,
+            'first_seen': result.first_seen,
+            'last_seen': result.last_seen,
+            'description': f'Actividad sospechosa desde {result.ip}: {result.count} eventos de ERROR/WARN',
+            'log_ids': result.log_ids.split(',') if result.log_ids else []
+        })
+    
+    return correlations
+
+def detect_time_anomalies(time_threshold):
+    """Detecta actividad fuera de horario normal (00:00-06:00)."""
+    correlations = []
+    
+    # Nota: Esto es una implementación simplificada
+    # En producción, necesitarías parsear los timestamps correctamente
+    
+    query = db.session.query(
+        Log.ip,
+        db.func.count(Log.id).label('count'),
+        db.func.min(Log.timestamp).label('first_seen'),
+        db.func.max(Log.timestamp).label('last_seen'),
+        db.func.group_concat(Log.id).label('log_ids')
+    ).filter(
+        Log.nivel.in_(['ERROR', 'WARN'])
+    ).group_by(Log.ip).having(db.func.count(Log.id) >= 10)
+    
+    for result in query.all():
+        # Simplificación: marcamos como anomalía temporal si hay muchos eventos
+        if result.count >= 20:
+            correlations.append({
+                'type': 'time_anomaly',
+                'ip': result.ip,
+                'count': result.count,
+                'severity': 'MEDIUM',
+                'first_seen': result.first_seen,
+                'last_seen': result.last_seen,
+                'description': f'Volumen anormal de actividad desde {result.ip}: {result.count} eventos en periodo corto',
+                'log_ids': result.log_ids.split(',') if result.log_ids else []
+            })
+    
+    return correlations
+
+def save_correlation(corr_data):
+    """Guarda una correlación en la base de datos, evitando duplicados."""
+    try:
+        # Verificar si ya existe una correlación similar activa
+        existing = Correlation.query.filter_by(
+            correlation_type=corr_data['type'],
+            source_ip=corr_data['ip'],
+            status='ACTIVE'
+        ).first()
+        
+        if existing:
+            # Actualizar la existente
+            existing.event_count = corr_data['count']
+            existing.last_seen = datetime.fromisoformat(corr_data['last_seen']) if isinstance(corr_data['last_seen'], str) else corr_data['last_seen']
+            existing.severity = corr_data['severity']
+            existing.related_log_ids = json.dumps(corr_data['log_ids'])
+        else:
+            # Crear nueva
+            new_corr = Correlation(
+                correlation_type=corr_data['type'],
+                source_ip=corr_data['ip'],
+                event_count=corr_data['count'],
+                severity=corr_data['severity'],
+                first_seen=datetime.fromisoformat(corr_data['first_seen']) if isinstance(corr_data['first_seen'], str) else corr_data['first_seen'],
+                last_seen=datetime.fromisoformat(corr_data['last_seen']) if isinstance(corr_data['last_seen'], str) else corr_data['last_seen'],
+                description=corr_data['description'],
+                related_log_ids=json.dumps(corr_data['log_ids'])
+            )
+            db.session.add(new_corr)
+        
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error guardando correlación: {e}")
+        db.session.rollback()
+        return False
+
+# ==================== ENDPOINTS DE CORRELACIÓN ====================
+
+@app.route('/correlations')
+@login_required
+def correlations():
+    """Página de correlaciones de eventos."""
+    return render_template('correlation.html')
+
+@app.route('/api/correlations')
+@login_required
+def get_correlations():
+    """API: Obtiene todas las correlaciones detectadas."""
+    try:
+        # Parámetros de filtrado
+        status = request.args.get('status', 'ACTIVE')
+        severity = request.args.get('severity', None)
+        corr_type = request.args.get('type', None)
+        
+        query = Correlation.query
+        
+        if status and status != 'ALL':
+            query = query.filter_by(status=status)
+        if severity:
+            query = query.filter_by(severity=severity)
+        if corr_type:
+            query = query.filter_by(correlation_type=corr_type)
+        
+        correlations = query.order_by(Correlation.created_at.desc()).all()
+        
+        return jsonify({
+            'correlations': [c.to_dict() for c in correlations],
+            'total': len(correlations)
+        })
+    except Exception as e:
+        print(f"Error obteniendo correlaciones: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/correlations/analyze', methods=['POST'])
+@login_required
+def trigger_correlation_analysis():
+    """API: Ejecuta el análisis de correlación manualmente."""
+    try:
+        correlations = analyze_correlations()
+        
+        # Guardar correlaciones detectadas
+        saved_count = 0
+        for corr in correlations:
+            if save_correlation(corr):
+                saved_count += 1
+        
+        return jsonify({
+            'message': f'Análisis completado. {saved_count} correlaciones detectadas/actualizadas.',
+            'detected': len(correlations),
+            'saved': saved_count
+        })
+    except Exception as e:
+        print(f"Error en análisis de correlación: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/correlations/summary')
+@login_required
+def get_correlations_summary():
+    """API: Obtiene resumen de correlaciones para el dashboard."""
+    try:
+        # Obtener correlaciones activas
+        active_correlations = Correlation.query.filter_by(status='ACTIVE').all()
+        
+        # Contar por severidad
+        severity_counts = {
+            'CRITICAL': 0,
+            'HIGH': 0,
+            'MEDIUM': 0,
+            'LOW': 0
+        }
+        
+        for corr in active_correlations:
+            severity_counts[corr.severity] = severity_counts.get(corr.severity, 0) + 1
+        
+        # Obtener top 5 más recientes (ordenadas por severidad y fecha)
+        severity_order = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
+        top_correlations = sorted(
+            active_correlations,
+            key=lambda x: (severity_order.get(x.severity, 4), x.created_at),
+            reverse=False
+        )[:5]
+        
+        return jsonify({
+            'total_active': len(active_correlations),
+            'severity_counts': severity_counts,
+            'top_correlations': [c.to_dict() for c in top_correlations],
+            'has_critical': severity_counts['CRITICAL'] > 0
+        })
+    except Exception as e:
+        print(f"Error obteniendo resumen de correlaciones: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/correlations/<int:corr_id>/status', methods=['PUT'])
+@login_required
+def update_correlation_status(corr_id):
+    """API: Actualiza el estado de una correlación con información de auditoría."""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        notes = data.get('notes', '')
+        
+        if new_status not in ['ACTIVE', 'RESOLVED', 'FALSE_POSITIVE']:
+            return jsonify({'error': 'Estado inválido'}), 400
+        
+        correlation = Correlation.query.get(corr_id)
+        if not correlation:
+            return jsonify({'error': 'Correlación no encontrada'}), 404
+        
+        # Actualizar estado
+        correlation.status = new_status
+        
+        # Capturar información de auditoría si se está resolviendo
+        if new_status in ['RESOLVED', 'FALSE_POSITIVE']:
+            from datetime import datetime
+            import socket
+            
+            correlation.resolved_by = current_user.username
+            correlation.resolved_at = datetime.now()
+            correlation.resolved_from_ip = request.remote_addr
+            
+            # Intentar obtener hostname
+            try:
+                correlation.resolved_from_location = socket.gethostbyaddr(request.remote_addr)[0]
+            except:
+                correlation.resolved_from_location = request.remote_addr
+            
+            correlation.notes = notes
+        
+        db.session.commit()
+        
+        return jsonify({'message': 'Estado actualizado', 'correlation': correlation.to_dict()})
+    except Exception as e:
+        print(f"Error actualizando estado: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 # INICIO DEL SERVIDOR

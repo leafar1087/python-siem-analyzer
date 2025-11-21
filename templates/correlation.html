@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}Correlación de Eventos - SIEM{% endblock %}
+
+{% block extra_css %}
+<style>
+    #stats-row {
+        transition: opacity 0.5s ease-in-out, 
+                    max-height 0.5s ease-in-out,
+                    margin-bottom 0.5s ease-in-out;
+        overflow: hidden;
+        max-height: 200px; /* Altura aproximada de las tarjetas */
+    }
+    
+    #stats-row.fade-out {
+        opacity: 0;
+        max-height: 0;
+        margin-bottom: 0 !important;
+    }
+    
+    #stats-row.fade-in {
+        opacity: 1;
+        max-height: 200px;
+    }
+    
+    #correlations-container {
+        transition: margin-top 0.5s ease-in-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Heading -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-project-diagram text-primary"></i> Correlación de Eventos
+        <small id="correlation-count" class="text-muted ml-2"></small>
+    </h1>
+    <button class="btn btn-primary btn-sm" onclick="runAnalysis()">
+        <i class="fas fa-sync-alt"></i> Analizar Ahora
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label>Estado</label>
+                <select id="filter-status" class="form-control form-control-sm" onchange="loadCorrelations()">
+                    <option value="ACTIVE">Activas</option>
+                    <option value="RESOLVED">Resueltas</option>
+                    <option value="FALSE_POSITIVE">Falsos Positivos</option>
+                    <option value="ALL">Todas</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>Severidad</label>
+                <select id="filter-severity" class="form-control form-control-sm" onchange="loadCorrelations()">
+                    <option value="">Todas</option>
+                    <option value="CRITICAL">Crítica</option>
+                    <option value="HIGH">Alta</option>
+                    <option value="MEDIUM">Media</option>
+                    <option value="LOW">Baja</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>Tipo</label>
+                <select id="filter-type" class="form-control form-control-sm" onchange="loadCorrelations()">
+                    <option value="">Todos</option>
+                    <option value="brute_force">Fuerza Bruta</option>
+                    <option value="port_scan">Escaneo de Puertos</option>
+                    <option value="suspicious_ip">IP Sospechosa</option>
+                    <option value="time_anomaly">Anomalía Temporal</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>&nbsp;</label>
+                <button class="btn btn-secondary btn-sm btn-block" onclick="resetFilters()">
+                    <i class="fas fa-redo"></i> Resetear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4" id="stats-row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Críticas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-critical">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Altas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-high">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Medias</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-medium">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-info-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Activas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-total">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-project-diagram fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Correlaciones -->
+<div id="correlations-container">
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Cargando...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalles de correlación -->
+<div class="modal fade" id="correlationModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de Correlación</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="correlation-details">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentCorrelations = [];
+
+// Cargar correlaciones al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    loadCorrelations();
+    // Auto-refresh cada 10 segundos
+    setInterval(loadCorrelations, 10000);
+});
+
+function loadCorrelations() {
+    const status = document.getElementById('filter-status').value;
+    const severity = document.getElementById('filter-severity').value;
+    const type = document.getElementById('filter-type').value;
+    
+    // Mostrar/ocultar estadísticas con transición suave
+    const statsRow = document.getElementById('stats-row');
+    
+    if (status === 'ACTIVE') {
+        // Mostrar con fade-in
+        statsRow.classList.remove('fade-out');
+        statsRow.classList.add('fade-in');
+        statsRow.style.display = 'flex';
+    } else {
+        // Ocultar con fade-out
+        statsRow.classList.remove('fade-in');
+        statsRow.classList.add('fade-out');
+        // Esperar a que termine la animación antes de ocultar
+        setTimeout(() => {
+            if (!statsRow.classList.contains('fade-in')) {
+                statsRow.style.display = 'none';
+            }
+        }, 500); // Mismo tiempo que la transición CSS
+    }
+    
+    let url = '/api/correlations?status=' + status;
+    if (severity) url += '&severity=' + severity;
+    if (type) url += '&type=' + type;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            currentCorrelations = data.correlations;
+            renderCorrelations(data.correlations);
+            updateStats(data.correlations);
+        })
+        .catch(error => {
+            console.error('Error cargando correlaciones:', error);
+            document.getElementById('correlations-container').innerHTML = 
+                '<div class="alert alert-danger">Error cargando correlaciones</div>';
+        });
+}
+
+function renderCorrelations(correlations) {
+    const container = document.getElementById('correlations-container');
+    
+    if (correlations.length === 0) {
+        container.innerHTML = `
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5>No se encontraron correlaciones</h5>
+                    <p class="text-muted">No hay patrones sospechosos detectados con los filtros actuales.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    correlations.forEach(corr => {
+        const severityClass = getSeverityClass(corr.severity);
+        const typeIcon = getTypeIcon(corr.correlation_type);
+        const typeName = getTypeName(corr.correlation_type);
+        
+        html += `
+            <div class="card shadow mb-3 border-left-${severityClass}">
+                <div class="card-header py-2">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h6 class="m-0 font-weight-bold text-${severityClass}">
+                                <i class="${typeIcon}"></i> ${typeName}
+                                <span class="badge badge-${severityClass} ml-2">${corr.severity}</span>
+                            </h6>
+                        </div>
+                        <div class="col-auto">
+                            <small class="text-muted">ID: #${corr.id}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="mb-2"><strong>Descripción:</strong> ${corr.description}</p>
+                            <p class="mb-1">
+                                <i class="fas fa-network-wired"></i> <strong>IP Origen:</strong> 
+                                <code>${corr.source_ip}</code>
+                            </p>
+                            <p class="mb-1">
+                                <i class="fas fa-list-ol"></i> <strong>Eventos:</strong> ${corr.event_count}
+                            </p>
+                            <p class="mb-1">
+                                <i class="fas fa-clock"></i> <strong>Periodo:</strong> 
+                                ${formatDate(corr.first_seen)} - ${formatDate(corr.last_seen)}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <button class="btn btn-sm btn-info mb-2" onclick="viewDetails(${corr.id})">
+                                <i class="fas fa-eye"></i> Ver Detalles
+                            </button><br>
+                            ${corr.status === 'ACTIVE' ? `
+                                <button class="btn btn-sm btn-success mb-2" onclick="updateStatus(${corr.id}, 'RESOLVED')">
+                                    <i class="fas fa-check"></i> Resolver
+                                </button><br>
+                                <button class="btn btn-sm btn-warning" onclick="updateStatus(${corr.id}, 'FALSE_POSITIVE')">
+                                    <i class="fas fa-times"></i> Falso Positivo
+                                </button>
+                            ` : `
+                                <span class="badge badge-secondary">${corr.status}</span>
+                            `}
+                        </div>
+                    </div>
+                    ${corr.resolved_by ? `
+                        <hr class="my-2">
+                        <div class="row">
+                            <div class="col-12">
+                                <small class="text-muted">
+                                    <i class="fas fa-user-check"></i> Resuelto por <strong>${corr.resolved_by}</strong> 
+                                    el ${formatDate(corr.resolved_at)} 
+                                    desde <code>${corr.resolved_from_ip}</code>
+                                    ${corr.notes ? `<br><i class="fas fa-sticky-note"></i> ${corr.notes}` : ''}
+                                </small>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function updateStats(correlations) {
+    const stats = {
+        CRITICAL: 0,
+        HIGH: 0,
+        MEDIUM: 0,
+        LOW: 0
+    };
+    
+    correlations.forEach(corr => {
+        if (corr.status === 'ACTIVE') {
+            stats[corr.severity] = (stats[corr.severity] || 0) + 1;
+        }
+    });
+    
+    document.getElementById('stat-critical').textContent = stats.CRITICAL;
+    document.getElementById('stat-high').textContent = stats.HIGH;
+    document.getElementById('stat-medium').textContent = stats.MEDIUM;
+    document.getElementById('stat-total').textContent = correlations.filter(c => c.status === 'ACTIVE').length;
+    document.getElementById('correlation-count').textContent = `(${correlations.length} total)`;
+}
+
+function getSeverityClass(severity) {
+    const classes = {
+        'CRITICAL': 'danger',
+        'HIGH': 'warning',
+        'MEDIUM': 'info',
+        'LOW': 'secondary'
+    };
+    return classes[severity] || 'secondary';
+}
+
+function getTypeIcon(type) {
+    const icons = {
+        'brute_force': 'fas fa-user-lock',
+        'port_scan': 'fas fa-network-wired',
+        'suspicious_ip': 'fas fa-exclamation-triangle',
+        'time_anomaly': 'fas fa-clock'
+    };
+    return icons[type] || 'fas fa-question-circle';
+}
+
+function getTypeName(type) {
+    const names = {
+        'brute_force': 'Fuerza Bruta',
+        'port_scan': 'Escaneo de Puertos',
+        'suspicious_ip': 'IP Sospechosa',
+        'time_anomaly': 'Anomalía Temporal'
+    };
+    return names[type] || type;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleString('es-ES');
+}
+
+function runAnalysis() {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
+    
+    fetch('/api/correlations/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadCorrelations();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error ejecutando análisis');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> Analizar Ahora';
+    });
+}
+
+function updateStatus(corrId, newStatus) {
+    let notes = '';
+    if (newStatus === 'RESOLVED' || newStatus === 'FALSE_POSITIVE') {
+        notes = prompt(`Agregar notas sobre la resolución (opcional):`);
+        if (notes === null) return; // Usuario canceló
+    }
+    
+    if (!confirm(`¿Marcar esta correlación como ${newStatus}?`)) return;
+    
+    fetch(`/api/correlations/${corrId}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ status: newStatus, notes: notes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Estado actualizado correctamente');
+        loadCorrelations();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error actualizando estado');
+    });
+}
+
+function viewDetails(corrId) {
+    const corr = currentCorrelations.find(c => c.id === corrId);
+    if (!corr) return;
+    
+    let auditSection = '';
+    if (corr.resolved_by) {
+        auditSection = `
+            <hr>
+            <h6><i class="fas fa-user-check"></i> Información de Auditoría</h6>
+            <table class="table table-sm">
+                <tr><td><strong>Resuelto por:</strong></td><td>${corr.resolved_by}</td></tr>
+                <tr><td><strong>Fecha:</strong></td><td>${formatDate(corr.resolved_at)}</td></tr>
+                <tr><td><strong>Desde IP:</strong></td><td><code>${corr.resolved_from_ip}</code></td></tr>
+                <tr><td><strong>Ubicación:</strong></td><td>${corr.resolved_from_location || 'N/A'}</td></tr>
+                ${corr.notes ? `<tr><td><strong>Notas:</strong></td><td>${corr.notes}</td></tr>` : ''}
+            </table>
+        `;
+    }
+    
+    const detailsHtml = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Información General</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>#${corr.id}</td></tr>
+                    <tr><td><strong>Tipo:</strong></td><td>${getTypeName(corr.correlation_type)}</td></tr>
+                    <tr><td><strong>Severidad:</strong></td><td><span class="badge badge-${getSeverityClass(corr.severity)}">${corr.severity}</span></td></tr>
+                    <tr><td><strong>Estado:</strong></td><td>${corr.status}</td></tr>
+                    <tr><td><strong>IP Origen:</strong></td><td><code>${corr.source_ip}</code></td></tr>
+                    <tr><td><strong>Eventos:</strong></td><td>${corr.event_count}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Cronología</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Primer Evento:</strong></td><td>${formatDate(corr.first_seen)}</td></tr>
+                    <tr><td><strong>Último Evento:</strong></td><td>${formatDate(corr.last_seen)}</td></tr>
+                    <tr><td><strong>Detectado:</strong></td><td>${formatDate(corr.created_at)}</td></tr>
+                </table>
+            </div>
+        </div>
+        <hr>
+        <h6>Descripción</h6>
+        <p>${corr.description}</p>
+        ${auditSection}
+        <hr>
+        <h6>Logs Relacionados (${corr.related_log_ids.length})</h6>
+        <p class="text-muted">IDs: ${corr.related_log_ids.join(', ')}</p>
+    `;
+    
+    document.getElementById('correlation-details').innerHTML = detailsHtml;
+    $('#correlationModal').modal('show');
+}
+
+function resetFilters() {
+    document.getElementById('filter-status').value = 'ACTIVE';
+    document.getElementById('filter-severity').value = '';
+    document.getElementById('filter-type').value = '';
+    loadCorrelations();
+}
+</script>
+{% endblock %}
