@@ -47,7 +47,8 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 
 ### 📊 Visualización y Análisis
 
-<img width="2941" height="1917" alt="image" src="https://github.com/user-attachments/assets/b8bf6cb4-ac43-4b21-bf5e-7dd819842f9b" />
+<img width="1686" height="1347" alt="image" src="https://github.com/user-attachments/assets/4686cc4e-55b6-408f-8b4f-6fdf0713a126" />
+
 
 - **Dashboard en Tiempo Real**: Actualización automática cada 5 segundos
 - **Búsqueda Global**: Filtrado instantáneo de logs por IP, mensaje o nivel
@@ -66,11 +67,14 @@ Un sistema completo de análisis de logs de seguridad (SIEM) construido con Flas
 - Sugerencias de mitigación e investigación
 - Interfaz modal para consultas de IA
 
-  <img width="1448" height="794" alt="image" src="https://github.com/user-attachments/assets/e4186361-cb1e-4c8a-9532-89398d58e3bf" />
+<img width="639" height="377" alt="image" src="https://github.com/user-attachments/assets/281642c7-9167-4a15-b97d-e23691b5aad8" />
+
 
 ### 🔗 Correlación de Eventos (SIEM Avanzado)
 
-Sistema de detección de patrones y amenazas similar a CrowdStrike, que analiza logs para identificar comportamientos sospechosos:
+
+
+Sistema de detección de patrones y amenazas similar a CrowdStrike, que analiza logs para identificar comportamientos sospechosos
 
 **Patrones de Detección:**
 
@@ -91,6 +95,12 @@ Sistema de detección de patrones y amenazas similar a CrowdStrike, que analiza 
 - Interfaz con filtros por severidad, tipo y estado
 - Drill-down a logs relacionados
 - Exportación de reportes
+
+- 
+<img width="1673" height="896" alt="image" src="https://github.com/user-attachments/assets/4ea186a6-490c-4e9b-928b-bacfd6feadb5" />
+
+<img width="636" height="499" alt="image" src="https://github.com/user-attachments/assets/d320b8b7-ee9f-4a48-bf08-f3d4fb1ec91f" />
+
 
 ### 💾 Gestión de Datos
 
